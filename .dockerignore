@@ -1,0 +1,10 @@
+target/
+.git/
+.worktrees/
+.superpowers/
+e2e/
+docs/
+*.iml
+.idea/
+.env
+README.md
