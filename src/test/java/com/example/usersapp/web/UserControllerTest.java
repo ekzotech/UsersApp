@@ -93,8 +93,10 @@ class UserControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    void usersUrlIsForbiddenForTeacher() throws Exception {
-        mockMvc.perform(get("/users")).andExpect(status().isForbidden());
+    void usersUrlIsVisibleToTeacher() throws Exception {
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("users/list"));
     }
 
     private static Student student(String fullName, String email, boolean active) {
