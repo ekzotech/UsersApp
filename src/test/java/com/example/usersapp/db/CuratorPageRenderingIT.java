@@ -13,6 +13,7 @@ import com.example.usersapp.domain.UserRole;
 import com.example.usersapp.service.CuratorService;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -56,6 +57,13 @@ class CuratorPageRenderingIT {
         studentRepository.deleteAll();
         userRepository.deleteAll();
         teacherRepository.deleteAll();
+    }
+
+    @BeforeEach
+    void giveTheSeedUsernameBack() {
+        // The context starts the seed profile (application.properties default), and "curator1" is the
+        // username of the demo curator it creates on an empty database.
+        userRepository.findByUsername("curator1").ifPresent(user -> userRepository.deleteById(user.getId()));
     }
 
     @Test

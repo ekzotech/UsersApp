@@ -26,8 +26,10 @@ import com.example.usersapp.domain.UserRole;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.stream.Collectors;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,11 +39,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class SeedRunnerTest {
 
-        @Mock
+    @Mock
     private StudentRepository studentRepository;
 
     @Mock
@@ -153,7 +156,7 @@ class SeedRunnerTest {
         List<Enrollment> enrollments = savedEnrollments();
         assertThat(enrollments).isNotEmpty();
         assertThat(enrollments).allSatisfy(enrollment -> {
-            assertThat(enrollment.getTeacher().getCourses()).contains(enrollment.getCourse());
+            assertThat(enrollment.getTeacher().teaches(enrollment.getCourse())).isTrue();
             assertThat(enrollment.getStudent()).isNotNull();
         });
         assertThat(enrollments)
@@ -201,19 +204,99 @@ class SeedRunnerTest {
                 .containsExactlyElementsOf(firstRun.stream().map(Student::getFullName).toList());
     }
 
-    private void givenEmptyDatabase() {
-        when(userRepository.count()).thenReturn(0L);
+    @Test
+    void createsEnrollmentsWithinPerTeacherCourseLimit() {
+        // Two teachers per course: each course shares two teachers, and each (teacher, course) pair gets
+        // half of that course's load.
+        properties.setTeachers(24);
+        properties.setCurators(6);
+        properties.setStudents(400);
+        givenEmptyDatabase();
+
+        runner(faker()).run(null);
+
+        Map<Course, Long> enrolledPerCourse = savedEnrollments().stream()
+                .collect(Collectors.groupingBy(Enrollment::getCourse, Collectors.counting()));
+        Map<String, Long> savedPerPair = savedEnrollments().stream()
+                .collect(Collectors.groupingBy(
+                        enrollment -> enrollment.getTeacher().getEmail() + " " + enrollment.getCourse().getId(),
+                        Collectors.counting()));
+        assertThat(enrolledPerCourse).as("every course gets students").hasSize(12);
+        assertThat(savedPerPair).isNotEmpty()
+                .allSatisfy((pair, saved) -> assertThat(saved)
+                        .as("students of one teacher on one course (%s)", pair)
+                        .isPositive()
+                        .isLessThanOrEqualTo((long) SeedRunner.MAX_SEEDED_STUDENTS_PER_COURSE));
+    }
+
+    @Test
+    void enrolsEveryCourseAStudentMeets() {
+        // Twelve students walk the catalogue in pairs (0 meets 1+2, 2 meets 3+4, ... 10 meets 11+12), so the
+        // whole catalogue is met and the last student's second course is only reachable through the free
+        // teacher of that course rather than the first teacher who happens to teach it.
+        properties.setTeachers(12);
+        properties.setCurators(2);
+        properties.setStudents(12);
         List<Course> courses = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-            courses.add(CourseFixtures.course("course-" + i, "Предмет " + i));
+        for (int i = 1; i <= 12; i++) {
+            Course course = CourseFixtures.course("course-" + i, "Предмет " + i);
+            ReflectionTestUtils.setField(course, "id", (long) i);
+            courses.add(course);
         }
         when(courseRepository.findAll(any(Sort.class))).thenReturn(courses);
+        when(userRepository.count()).thenReturn(0L);
+        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+
+        runner(faker()).run(null);
+
+        assertThat(savedEnrollments()).extracting(Enrollment::getCourse).containsAll(courses);
+        assertThat(savedEnrollments()).isNotEmpty().allSatisfy(enrollment ->
+                assertThat(enrollment.getTeacher().teaches(enrollment.getCourse())).isTrue());
+    }
+
+    @Test
+    void enrolledCountMatchesTheEnrollmentsSaved() {
+        properties.setTeachers(12);
+        properties.setCurators(2);
+        properties.setStudents(20);
+        givenEmptyDatabase();
+
+        runner(faker()).run(null);
+
+        List<Enrollment> enrollments = savedEnrollments();
+        assertThat(enrollments).isNotEmpty();
+        // Every second student is enrolled, up to two courses each; at this size the limit drops nothing.
+        assertThat(enrollments).hasSizeLessThanOrEqualTo(properties.getStudents() / 2 * 2);
+        assertThat(enrollments).hasSize(properties.getStudents() / 2 * 2);
+    }
+
+    private void givenEmptyDatabase() {
+        when(userRepository.count()).thenReturn(0L);
+        givenCourses();
         when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
     }
 
+    /**
+     * The 12 catalogue courses as the migrations insert them, ids 1..12: the seed picks courses by id when
+     * it splits them between the teachers, so the fixtures carry ids just like the database rows.
+     */
+    private List<Course> givenCourses() {
+        List<Course> courses = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            Course course = CourseFixtures.course("course-" + i, "Предмет " + i);
+            ReflectionTestUtils.setField(course, "id", (long) i);
+            courses.add(course);
+        }
+        when(courseRepository.findAll(any(Sort.class))).thenReturn(List.copyOf(courses));
+        return courses;
+    }
+
     private SeedRunner runner(Faker faker) {
-        return new SeedRunner(properties, faker, studentRepository, teacherRepository, courseRepository,
-                enrollmentRepository, userRepository, passwordEncoder);
+        // run() seeds through the bean's own transactional proxy; outside Spring that is the instance itself.
+        SeedRunner runner = new SeedRunner(properties, faker, studentRepository, teacherRepository,
+                courseRepository, enrollmentRepository, userRepository, passwordEncoder, null);
+        ReflectionTestUtils.setField(runner, "self", runner);
+        return runner;
     }
 
     private Faker faker() {

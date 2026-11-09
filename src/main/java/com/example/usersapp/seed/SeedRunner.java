@@ -14,30 +14,36 @@ import com.example.usersapp.domain.UserRole;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.datafaker.Faker;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Fills an empty database with demo data when the application starts with the "seed" profile.
  * Everything comes from a Faker seeded with {@code app.seed.random-seed}, so two runs over an empty
  * database produce the same names. The presence of any user account means the seed already ran, so a
  * second start does nothing.
+ *
+ * <p>The writes happen in one transaction (see {@link #seed()}), so a failure halfway leaves an empty
+ * database that the next start seeds again instead of a half-seeded one the user guard would keep.
  */
 @Component
 @Profile("seed")
 public class SeedRunner implements ApplicationRunner {
 
-    // Guard below EnrollmentService.MAX_STUDENTS_PER_COURSE_PER_TEACHER (60): a seeded teacher teaches a
-    // single course, and the even split keeps every (teacher, course) pair well under this cap anyway.
-    private static final int MAX_SEEDED_STUDENTS_PER_COURSE = 30;
+    // Below EnrollmentService.MAX_STUDENTS_PER_COURSE_PER_TEACHER (60): the seeded data must never trip the
+    // business limit it mimics.
+    static final int MAX_SEEDED_STUDENTS_PER_COURSE = 30;
 
     private static final Logger LOG = System.getLogger(SeedRunner.class.getName());
 
@@ -49,6 +55,7 @@ public class SeedRunner implements ApplicationRunner {
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SeedRunner self;
 
     public SeedRunner(SeedProperties properties,
                       Faker faker,
@@ -57,7 +64,8 @@ public class SeedRunner implements ApplicationRunner {
                       CourseRepository courseRepository,
                       EnrollmentRepository enrollmentRepository,
                       UserRepository userRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      @Lazy SeedRunner self) {
         this.properties = properties;
         this.faker = faker;
         this.studentRepository = studentRepository;
@@ -66,6 +74,7 @@ public class SeedRunner implements ApplicationRunner {
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.self = self;
     }
 
     @Override
@@ -73,6 +82,13 @@ public class SeedRunner implements ApplicationRunner {
         if (!properties.isEnabled()) {
             return;
         }
+        // Through the bean's own transactional proxy, so every write below is one unit of work: a failure
+        // halfway rolls the whole seed back, and the next start finds the database empty and seeds it.
+        self.seed();
+    }
+
+    @Transactional
+    void seed() {
         if (userRepository.count() > 0) {
             return;
         }
@@ -92,11 +108,16 @@ public class SeedRunner implements ApplicationRunner {
     }
 
     private List<Teacher> seedTeachers(List<Course> courses) {
+        // Each teacher teaches one or two catalogue courses, so every course has a teacher who can take
+        // students. When the catalogue is the full 12 and the teachers are many, everyone teaches one.
+        int coursesPerTeacher = courses.size() >= 2 * properties.getTeachers() ? 1 : 2;
         List<Teacher> teachers = new ArrayList<>();
         for (int i = 0; i < properties.getTeachers(); i++) {
             Teacher teacher = new Teacher(faker.name().fullName(), "seed-teacher-" + i + "@example.com",
                     i < properties.getCurators());
-            teacher.getCourses().add(courses.get(i % courses.size()));
+            for (int k = 0; k < coursesPerTeacher; k++) {
+                teacher.getCourses().add(courses.get((i * coursesPerTeacher + k) % courses.size()));
+            }
             teachers.add(teacher);
         }
         teacherRepository.saveAll(teachers);
@@ -119,35 +140,44 @@ public class SeedRunner implements ApplicationRunner {
     }
 
     private int seedEnrollments(List<Student> students, List<Teacher> teachers, List<Course> courses) {
-        // One seeded teacher per course model, so counting per course counts per (teacher, course).
-        Map<Course, Integer> load = new HashMap<>();
+        // One budget per (teacher, course): several seeded teachers can teach the same course, and the
+        // business limit counts a pair, not a course.
+        Map<TeacherCourse, Integer> load = new HashMap<>();
         int created = 0;
         for (int i = 0; i < students.size(); i++) {
             if (i % 2 != 0) {
                 continue;
             }
             Student student = students.get(i);
-            List<Enrollment> pending = new ArrayList<>();
             for (int k = 0; k < 2; k++) {
                 Course course = courses.get((i + k) % courses.size());
-                // Same instances as the ones attached to the seeded teachers, so competency is a plain match.
-                Teacher teacher = teachers.stream()
-                        .filter(candidate -> candidate.getCourses().contains(course))
-                        .findFirst()
-                        .orElse(null);
+                Teacher teacher = nextTeacher(teachers, course, load);
                 if (teacher == null) {
                     continue;
                 }
-                if (load.getOrDefault(course, 0) >= MAX_SEEDED_STUDENTS_PER_COURSE) {
-                    continue;
-                }
-                load.merge(course, 1, Integer::sum);
-                pending.add(new Enrollment(teacher, student, course));
+                load.merge(new TeacherCourse(teacher, course), 1, Integer::sum);
+                enrollmentRepository.save(new Enrollment(teacher, student, course));
+                created++;
             }
-            pending.forEach(enrollmentRepository::save);
-            created += pending.size();
         }
         return created;
+    }
+
+    /**
+     * The competent teacher of the course with the free-most places, so a course taught by several seeded
+     * teachers gets its students spread over all of them; null when each of them is at the limit.
+     */
+    private static Teacher nextTeacher(List<Teacher> teachers, Course course, Map<TeacherCourse, Integer> load) {
+        return teachers.stream()
+                .filter(teacher -> teacher.teaches(course))
+                .min(Comparator.comparingInt(teacher -> load.getOrDefault(new TeacherCourse(teacher, course), 0)))
+                .filter(teacher -> load.getOrDefault(new TeacherCourse(teacher, course), 0)
+                        < MAX_SEEDED_STUDENTS_PER_COURSE)
+                .orElse(null);
+    }
+
+    // Identity on purpose: the entities are compared by reference, the rows may not have ids yet.
+    private record TeacherCourse(Teacher teacher, Course course) {
     }
 
     private void seedAccounts(List<Teacher> teachers) {

@@ -23,6 +23,7 @@ import com.example.usersapp.domain.UserRole;
 import com.example.usersapp.service.EnrollmentService;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -54,6 +55,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class CuratorPageWebTest {
 
     private static final String CURATOR_NAME = "Марина Курилова";
+    // The username of the demo curator the seed creates.
+    private static final String CURATOR_USERNAME = "curator1";
     private static final String STUDENT_NAME = "Вера Орлова";
 
     @Autowired
@@ -81,6 +84,14 @@ class CuratorPageWebTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
 
+    @BeforeEach
+    void giveTheSeedUsernameBack() {
+        // This context starts the seed profile (application.properties default), and a demo account with this
+        // username is exactly what a full run may leave in the database under other test classes.
+        userRepository.findByUsername(CURATOR_USERNAME)
+                .ifPresent(user -> userRepository.deleteById(user.getId()));
+    }
+
     @AfterEach
     void clearDatabase() {
         enrollmentRepository.deleteAll();
@@ -90,9 +101,9 @@ class CuratorPageWebTest {
     }
 
     @Test
-    @WithMockUser(username = "curator1", roles = "TEACHER")
+    @WithMockUser(username = CURATOR_USERNAME, roles = "TEACHER")
     void curatorPageRendersStudentAndCuratorNames() throws Exception {
-        Teacher curator = persistCurator("curator1", CURATOR_NAME);
+        Teacher curator = persistCurator(CURATOR_USERNAME, CURATOR_NAME);
         Student student = studentRepository.save(new Student(STUDENT_NAME, "vera@example.com", "ИС-14"));
         student.setCurator(curator);
         studentRepository.saveAndFlush(student);
