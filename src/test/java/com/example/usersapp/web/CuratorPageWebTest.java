@@ -44,7 +44,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code LazyInitializationException}. The curator page test only documents the rendered output - a
  * test-managed context hands back an already-initialised proxy, so it cannot discriminate the
  * in-transaction touch in {@code CuratorService.studentsOfCurator}; that safeguard is covered by the
- * service-level tests and {@code db/CuratorPageRenderingIT}.
+ * service-level tests and {@code db/CuratorRepositoryIT.studentsOfCuratorInitialisesCuratorsForRendering}.
  */
 @SpringBootTest(classes = UsersAppApplication.class)
 @AutoConfigureMockMvc

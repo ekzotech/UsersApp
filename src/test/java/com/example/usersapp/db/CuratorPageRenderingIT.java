@@ -24,9 +24,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 
 /**
- * Full-context counterpart of {@link com.example.usersapp.support.PostgresTestBase}: service calls run in
- * their own transaction that commits before assertions, so the page model is exactly what a rendering
- * template would receive - detached entities with lazy proxies (open-in-view is disabled).
+ * Full-context call of {@link CuratorService#studentsOfCurator}: the service runs in its own committed
+ * transaction, so the returned rows are what the page receives (open-in-view is disabled). It checks the
+ * rendered data is readable; the discriminating guard for the in-transaction touch lives in
+ * {@code CuratorRepositoryIT.studentsOfCuratorInitialisesCuratorsForRendering} (a test session can hand
+ * back already-initialised proxies, so an {@code isInitialized} assertion alone proves little).
  */
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @Testcontainers
