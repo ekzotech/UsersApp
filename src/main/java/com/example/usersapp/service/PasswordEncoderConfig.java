@@ -9,8 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class PasswordEncoderConfig {
 
     /**
-     * Spring Security's delegating encoder: it encodes with BCrypt and keeps the "{bcrypt}" prefix in
-     * the stored hash, so a plain BCrypt hash and a prefixed one both verify against stored data.
+     * Spring Security's delegating encoder: it encodes with BCrypt and stores the hash as
+     * "{bcrypt}$2a$...". {@code matches()} only understands prefixed hashes - a bare "$2a$..." value
+     * throws IllegalArgumentException - so every stored hash must be produced by {@code encode()}.
      */
     @Bean
     public PasswordEncoder passwordEncoder() {

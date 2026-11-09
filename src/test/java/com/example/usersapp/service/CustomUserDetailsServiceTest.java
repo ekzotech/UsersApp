@@ -25,12 +25,12 @@ class CustomUserDetailsServiceTest {
     @Test
     void loadsUserWithRoleAuthority() {
         when(userRepository.findByUsername("admin"))
-                .thenReturn(Optional.of(new User("admin", "$2a$10$hash", UserRole.ADMIN)));
+                .thenReturn(Optional.of(new User("admin", "{bcrypt}$2a$10$hash", UserRole.ADMIN)));
 
         UserDetails details = new CustomUserDetailsService(userRepository).loadUserByUsername("admin");
 
         assertThat(details.getUsername()).isEqualTo("admin");
-        assertThat(details.getPassword()).isEqualTo("$2a$10$hash");
+        assertThat(details.getPassword()).isEqualTo("{bcrypt}$2a$10$hash");
         assertThat(details.getAuthorities())
                 .singleElement()
                 .satisfies(authority -> assertThat(authority.getAuthority()).isEqualTo("ROLE_ADMIN"));
@@ -39,7 +39,7 @@ class CustomUserDetailsServiceTest {
     @Test
     void loadsTeacherAuthority() {
         when(userRepository.findByUsername("teacher"))
-                .thenReturn(Optional.of(new User("teacher", "$2a$10$hash", UserRole.TEACHER)));
+                .thenReturn(Optional.of(new User("teacher", "{bcrypt}$2a$10$hash", UserRole.TEACHER)));
 
         UserDetails details = new CustomUserDetailsService(userRepository).loadUserByUsername("teacher");
 
@@ -61,7 +61,7 @@ class CustomUserDetailsServiceTest {
     @Test
     void lookupUsesExactUsername() {
         when(userRepository.findByUsername("Admin"))
-                .thenReturn(Optional.of(new User("admin", "$2a$10$hash", UserRole.ADMIN)));
+                .thenReturn(Optional.of(new User("admin", "{bcrypt}$2a$10$hash", UserRole.ADMIN)));
 
         UserDetails details = new CustomUserDetailsService(userRepository).loadUserByUsername("Admin");
 

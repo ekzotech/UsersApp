@@ -18,33 +18,33 @@ class UserRepositoryIT extends PostgresTestBase {
 
     @Test
     void findByUsernameReturnsSavedUser() {
-        userRepository.save(new User("alice", "$2a$hash", UserRole.ADMIN));
+        userRepository.save(new User("alice", "{bcrypt}$2a$hash", UserRole.ADMIN));
 
         assertThat(userRepository.findByUsername("alice")).hasValueSatisfying(user -> {
             assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
-            assertThat(user.getPassword()).isEqualTo("$2a$hash");
+            assertThat(user.getPassword()).isEqualTo("{bcrypt}$2a$hash");
         });
     }
 
     @Test
     void findByUsernameIsCaseSensitive() {
-        userRepository.save(new User("alice", "$2a$hash", UserRole.ADMIN));
+        userRepository.save(new User("alice", "{bcrypt}$2a$hash", UserRole.ADMIN));
 
         assertThat(userRepository.findByUsername("Alice")).isEmpty();
     }
 
     @Test
     void existsByUsernameIgnoreCaseMatchesAnyCase() {
-        userRepository.save(new User("alice", "$2a$hash", UserRole.ADMIN));
+        userRepository.save(new User("alice", "{bcrypt}$2a$hash", UserRole.ADMIN));
 
         assertThat(userRepository.existsByUsernameIgnoreCase("ALICE")).isTrue();
     }
 
     @Test
     void rejectsDuplicateUsernameInDifferentCase() {
-        userRepository.save(new User("alice", "$2a$hash", UserRole.ADMIN));
+        userRepository.save(new User("alice", "{bcrypt}$2a$hash", UserRole.ADMIN));
 
-        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("Alice", "$2a$hash", UserRole.TEACHER)))
+        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("Alice", "{bcrypt}$2a$hash", UserRole.TEACHER)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }
