@@ -1,33 +1,16 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { ADMIN_PASSWORD, ADMIN_USERNAME, hasPathSuffix, login } from '../helpers';
 
 /**
- * Compares the path part of the current URL with `/login` (or `login`)
- * so a deployment with a context path (`E2E_BASE_URL=https://host/usersapp`) still works.
- */
-function hasPathSuffix(path: string) {
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return (url: URL) => url.pathname === normalized || url.pathname.endsWith(normalized);
-}
-
-const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? 'admin';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'admin12345';
-
-/**
- * The login page (templates/login.html) renders a plain form: `#username`, `#password` and a
- * "Войти" submit button. The catalog (templates/users/list.html) is the authenticated landing page
- * with the `Пользователи` heading.
+ * Login page (templates/login.html) → `#username`, `#password`, the "Войти" button; the catalog
+ * (templates/users/list.html) is the authenticated landing page. Credentials, the login flow and the
+ * context-path-aware URL matcher come from ../helpers, so an `E2E_ADMIN_*` override or a change to the
+ * suffix rule applies to every spec at once.
  */
 test.beforeEach(async ({ page }) => {
   // Sessions are per test context; make sure the flow always starts anonymously.
   await page.context().clearCookies();
 });
-
-async function login(page: Page, username: string, password: string): Promise<void> {
-  await page.goto('/login');
-  await page.locator('#username').fill(username);
-  await page.locator('#password').fill(password);
-  await page.getByRole('button', { name: 'Войти' }).click();
-}
 
 test('anonymous visit /users redirects to /login', async ({ page }) => {
   await page.goto('/users');

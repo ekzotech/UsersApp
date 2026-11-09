@@ -54,7 +54,7 @@ public class CuratorService {
 
     /**
      * A curator takes an unassigned active student. Readable only through the curator page, where
-     * {@link #unassignedCandidates()} lists the candidates.
+     * {@code unassignedCandidates(String)} lists the candidates.
      */
     @Transactional
     public Student claimCurator(String username, Long studentId) {
@@ -81,8 +81,11 @@ public class CuratorService {
     }
 
     @Transactional(readOnly = true)
-    public UnassignedCandidates unassignedCandidates() {
-        List<Student> all = studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName();
+    public UnassignedCandidates unassignedCandidates(String query) {
+        List<Student> all = query == null || query.isBlank()
+                ? studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName()
+                : studentRepository.findByCuratorIsNullAndActiveTrueAndFullNameContainingIgnoreCaseOrderByFullName(
+                        query.strip());
         return new UnassignedCandidates(
                 all.stream().limit(UNASSIGNED_PAGE_SIZE).toList(),
                 all.size());

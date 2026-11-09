@@ -7,6 +7,7 @@ import {
   studentData,
   teacherData,
   createTeacher,
+  uniqueToken,
   type StudentData,
 } from '../helpers';
 
@@ -113,7 +114,11 @@ test.describe('deactivate / reactivate a student', () => {
 test('search finds created student by email', async ({ page }) => {
   await login(page);
 
+  // `StudentService.findAll(q)` matches a substring of the email, so the search key is a random token that no
+  // other row of this volume (seed or an earlier run) can contain; the second student shares nothing with it.
+  const token = uniqueToken();
   const first = studentData('Поиск1');
+  first.email = `qa-${token}@example.com`;
   const second = studentData('Поиск2');
   await fillStudentForm(page, first);
   await submitStudent(page);
@@ -123,7 +128,7 @@ test('search finds created student by email', async ({ page }) => {
   // The unfiltered catalog is seeded with ~300 students; after the search exactly one row remains.
   await expect(page.getByRole('heading', { name: /^Студенты \(\d{2,}\)$/, level: 2 })).toBeVisible();
 
-  await searchUsers(page, first.email);
+  await searchUsers(page, token);
 
   await expect(page.getByRole('heading', { name: 'Студенты (1)', level: 2 })).toBeVisible();
   const studentRows = page.locator('section').first().locator('tbody tr');

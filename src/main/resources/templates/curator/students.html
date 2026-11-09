@@ -51,7 +51,13 @@
     </table>
 
     <h2>Студенты без куратора</h2>
-    <p th:if="${#lists.isEmpty(unassigned)}">Все студенты распределены.</p>
+    <form th:action="@{/curator/students}" method="get">
+        <label for="find">Найти студента без куратора</label>
+        <input id="find" type="search" name="find" th:value="${find}" placeholder="ФИО">
+        <button type="submit">Найти</button>
+    </form>
+    <p th:if="${#lists.isEmpty(unassigned) and find != null and !#strings.isEmpty(find)}">Никого не найдено.</p>
+    <p th:if="${#lists.isEmpty(unassigned) and (find == null or #strings.isEmpty(find))}">Все студенты распределены.</p>
     <p th:if="${!#lists.isEmpty(unassigned)}"
        th:text="${'Показаны первые ' + #lists.size(unassigned) + ' из ' + unassignedTotal + '.'}">Показаны первые 50 из 210.</p>
     <table class="data" th:if="${!#lists.isEmpty(unassigned)}">

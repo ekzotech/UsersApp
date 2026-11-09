@@ -2,7 +2,9 @@ package com.example.usersapp.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -52,7 +54,7 @@ class CuratorControllerTest {
 
     @BeforeEach
     void defaultUnassignedCandidates() {
-        lenient().when(curatorService.unassignedCandidates())
+        lenient().when(curatorService.unassignedCandidates(any()))
                 .thenReturn(new CuratorService.UnassignedCandidates(List.of(), 0));
     }
 
@@ -304,7 +306,7 @@ class CuratorControllerTest {
     void assignPageListsUnassignedStudents() throws Exception {
         when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
         when(courseService.curators()).thenReturn(List.of());
-        when(curatorService.unassignedCandidates())
+        when(curatorService.unassignedCandidates(isNull()))
                 .thenReturn(new CuratorService.UnassignedCandidates(List.of(), 0));
 
         mockMvc.perform(get("/curator/students"))
@@ -356,10 +358,25 @@ class CuratorControllerTest {
         List<Student> page = List.of(student(1L, "Вера Орлова", "vera@example.com"));
         when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
         when(courseService.curators()).thenReturn(List.of());
-        when(curatorService.unassignedCandidates())
+        when(curatorService.unassignedCandidates(isNull()))
                 .thenReturn(new CuratorService.UnassignedCandidates(page, 210));
 
         mockMvc.perform(get("/curator/students"))
                 .andExpect(content().string(containsString("Показаны первые 1 из 210.")));
+    }
+
+    @Test
+    void curatorPageSearchesCandidatesByName() throws Exception {
+        when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
+        when(courseService.curators()).thenReturn(List.of());
+        when(curatorService.unassignedCandidates("Орлова"))
+                .thenReturn(new CuratorService.UnassignedCandidates(
+                        List.of(student(1L, "Вера Орлова", "vera@example.com")), 1));
+
+        mockMvc.perform(get("/curator/students").param("find", "Орлова"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("find", "Орлова"))
+                .andExpect(content().string(containsString("Вера Орлова")))
+                .andExpect(content().string(containsString("value=\"Орлова\"")));
     }
 }
