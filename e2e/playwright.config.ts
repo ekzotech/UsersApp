@@ -9,6 +9,10 @@ export default defineConfig({
   testDir: './tests',
   // The stack is seeded once and the specs share that data, so tests must not race each other.
   fullyParallel: false,
+  // One worker at a time: the users/curator specs mutate the single seeded database (deactivate a student,
+  // assign a curator, enrol a student), and the `mobile` project must not operate on another project's
+  // half-finished flow.
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
