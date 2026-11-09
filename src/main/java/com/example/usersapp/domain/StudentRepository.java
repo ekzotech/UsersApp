@@ -12,4 +12,6 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     boolean existsByEmailIgnoreCase(String email);
 
     List<Student> findByCuratorIdOrderByFullName(Long curatorId);
+
+    List<Student> findByCuratorIsNullAndActiveTrueOrderByFullName();
 }

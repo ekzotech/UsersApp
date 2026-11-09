@@ -52,6 +52,29 @@ public class CuratorService {
         return studentRepository.save(student);
     }
 
+    /**
+     * A curator takes an unassigned active student. Readable only through the curator page, where
+     * {@link #unassignedStudents()} lists the candidates.
+     */
+    @Transactional
+    public Student claimCurator(String username, Long studentId) {
+        Teacher curator = curatorOf(username).orElseThrow(AccessDeniedForCuratorException::new);
+        Student student = studentRepository.findById(studentId).orElseThrow(() -> new StudentNotFoundException(studentId));
+        if (student.getCurator() != null) {
+            throw new CuratorRuleException("У студента уже есть куратор");
+        }
+        if (!student.isActive()) {
+            throw new CuratorRuleException("Нельзя назначить куратора отчисленному студенту");
+        }
+        student.setCurator(curator);
+        return studentRepository.save(student);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Student> unassignedStudents() {
+        return studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName();
+    }
+
     @Transactional(readOnly = true)
     public List<Student> studentsOfCurator(String username) {
         Teacher teacher = curatorOf(username).orElseThrow(AccessDeniedForCuratorException::new);

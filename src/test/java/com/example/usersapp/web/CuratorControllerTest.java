@@ -102,9 +102,11 @@ class CuratorControllerTest {
     }
 
     @Test
-    void curatorPageRemoveButtonPostsWithoutCuratorId() throws Exception {
+    void curatorPageRemovalIsASeparateFormWithoutCuratorId() throws Exception {
+        Student assigned = student(5L, "Анна Смирнова", "anna@example.com");
+        assigned.setCurator(curator(7L, "Пётр Кураторов", "petr@example.com"));
         when(curatorService.studentsOfCurator(CURATOR_USERNAME))
-                .thenReturn(List.of(student(5L, "Анна Смирнова", "anna@example.com")));
+                .thenReturn(List.of(assigned));
         when(courseService.curators()).thenReturn(List.of());
 
         MvcResult result = mockMvc.perform(get("/curator/students"))
@@ -112,15 +114,35 @@ class CuratorControllerTest {
                 .andReturn();
 
         String html = result.getResponse().getContentAsString();
-        int remove = html.indexOf(">Снять куратора</button>");
+        // The removal form posts to its own endpoint and carries no curatorId, so a browser can
+        // never submit a removal as an assignment of the curator selected in the assign form.
+        int remove = html.indexOf("action=\"/curator/students/5/remove\"");
         assertThat(remove).isPositive();
-        String removeTag = html.substring(html.lastIndexOf("<button", remove), remove);
-        assertThat(removeTag)
-                .contains("formaction=\"/curator/students/5/curator\"")
-                .contains("name=\"curatorId\"")
-                .contains("value=\"\"");
+        int close = html.indexOf("</form>", remove);
+        assertThat(close).isPositive();
+        String removeForm = html.substring(remove, close);
+        assertThat(removeForm).contains(">Снять куратора</button>");
+        assertThat(removeForm).doesNotContain("name=\"curatorId\"");
         assertThat(html).contains("action=\"/curator/students/5/curator\"");
         assertThat(html).contains("name=\"_csrf\"");
+    }
+
+    @Test
+    void claimRedirectsToTheCuratorPageWithFlash() throws Exception {
+        mockMvc.perform(post("/curator/students/5/claim").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/curator/students"))
+                .andExpect(flash().attribute("success", "Куратор назначен"));
+        verify(curatorService).claimCurator(CURATOR_USERNAME, 5L);
+    }
+
+    @Test
+    void removeRedirectsToTheCuratorPageWithFlash() throws Exception {
+        mockMvc.perform(post("/curator/students/5/remove").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/curator/students"))
+                .andExpect(flash().attribute("success", "Куратор снят"));
+        verify(curatorService).removeCurator(5L);
     }
 
     @Test
@@ -268,5 +290,55 @@ class CuratorControllerTest {
         teacher.setId(id);
         teacher.setCurator(true);
         return teacher;
+    }
+
+    @Test
+    void assignPageListsUnassignedStudents() throws Exception {
+        when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
+        when(courseService.curators()).thenReturn(List.of());
+        when(curatorService.unassignedStudents()).thenReturn(List.of());
+
+        mockMvc.perform(get("/curator/students"))
+                .andExpect(model().attribute("unassigned", List.of()))
+                .andExpect(content().string(containsString("Все студенты распределены")));
+    }
+
+    @Test
+    void claimAssignsTheCurrentCurator() throws Exception {
+        mockMvc.perform(post("/curator/students/5/claim").with(csrf()))
+                .andExpect(redirectedUrl("/curator/students"))
+                .andExpect(flash().attribute("success", "Куратор назначен"));
+
+        verify(curatorService).claimCurator(CURATOR_USERNAME, 5L);
+        verify(curatorService, never()).assignCurator(anyLong(), anyLong());
+    }
+
+    @Test
+    void claimRuleViolationShowsFlashError() throws Exception {
+        doThrow(new CuratorRuleException("У студента уже есть куратор"))
+                .when(curatorService).claimCurator(CURATOR_USERNAME, 5L);
+
+        mockMvc.perform(post("/curator/students/5/claim").with(csrf()))
+                .andExpect(redirectedUrl("/curator/students"))
+                .andExpect(flash().attribute("error", "У студента уже есть куратор"));
+    }
+
+    @Test
+    void removeCuratorEndpointNoLongerDependsOnTheSelectedOption() throws Exception {
+        mockMvc.perform(post("/curator/students/5/remove").with(csrf()))
+                .andExpect(redirectedUrl("/curator/students"))
+                .andExpect(flash().attribute("success", "Куратор снят"));
+
+        verify(curatorService).assertCuratorOwnsStudent(CURATOR_USERNAME, 5L);
+        verify(curatorService).removeCurator(5L);
+        verify(curatorService, never()).assignCurator(anyLong(), anyLong());
+    }
+
+    @Test
+    void claimWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/curator/students/5/claim"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(curatorService);
     }
 }
