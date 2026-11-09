@@ -52,6 +52,8 @@
 
     <h2>Студенты без куратора</h2>
     <p th:if="${#lists.isEmpty(unassigned)}">Все студенты распределены.</p>
+    <p th:if="${!#lists.isEmpty(unassigned)}"
+       th:text="${'Показаны первые ' + #lists.size(unassigned) + ' из ' + unassignedTotal + '.'}">Показаны первые 50 из 210.</p>
     <table class="data" th:if="${!#lists.isEmpty(unassigned)}">
         <thead>
         <tr>

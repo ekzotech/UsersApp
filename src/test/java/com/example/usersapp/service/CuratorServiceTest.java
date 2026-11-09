@@ -318,10 +318,28 @@ class CuratorServiceTest {
     }
 
     @Test
-    void unassignedStudentsListsOnlyActiveStudentsWithoutACurator() {
+    void unassignedStudentsListsTheFirstCandidatesOnly() {
+        int total = CuratorService.UNASSIGNED_PAGE_SIZE * 2;
+        List<Student> all = java.util.stream.IntStream.rangeClosed(1, total)
+                .mapToObj(i -> student((long) i, "Студент " + i, "s" + i + "@example.com"))
+                .toList();
+        when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName()).thenReturn(all);
+
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+
+        assertThat(candidates.students()).hasSize(CuratorService.UNASSIGNED_PAGE_SIZE);
+        assertThat(candidates.students().get(0).getFullName()).isEqualTo("Студент 1");
+        assertThat(candidates.total()).isEqualTo(total);
+    }
+
+    @Test
+    void unassignedCandidatesAreAllWhenFewerThanThePageSize() {
         when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName())
                 .thenReturn(List.of(student(1L, "Вера Орлова", "vera@example.com")));
 
-        assertThat(service.unassignedStudents()).extracting(Student::getFullName).containsExactly("Вера Орлова");
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+
+        assertThat(candidates.students()).extracting(Student::getFullName).containsExactly("Вера Орлова");
+        assertThat(candidates.total()).isEqualTo(1);
     }
 }

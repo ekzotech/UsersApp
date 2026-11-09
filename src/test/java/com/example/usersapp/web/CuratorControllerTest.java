@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -27,6 +28,7 @@ import com.example.usersapp.service.CuratorRuleException;
 import com.example.usersapp.service.CuratorService;
 import com.example.usersapp.service.StudentNotFoundException;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -47,6 +49,12 @@ class CuratorControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @BeforeEach
+    void defaultUnassignedCandidates() {
+        lenient().when(curatorService.unassignedCandidates())
+                .thenReturn(new CuratorService.UnassignedCandidates(List.of(), 0));
+    }
 
     @MockitoBean
     private CuratorService curatorService;
@@ -296,7 +304,8 @@ class CuratorControllerTest {
     void assignPageListsUnassignedStudents() throws Exception {
         when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
         when(courseService.curators()).thenReturn(List.of());
-        when(curatorService.unassignedStudents()).thenReturn(List.of());
+        when(curatorService.unassignedCandidates())
+                .thenReturn(new CuratorService.UnassignedCandidates(List.of(), 0));
 
         mockMvc.perform(get("/curator/students"))
                 .andExpect(model().attribute("unassigned", List.of()))
@@ -340,5 +349,17 @@ class CuratorControllerTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(curatorService);
+    }
+
+    @Test
+    void curatorPageSaysHowManyCandidatesAreHidden() throws Exception {
+        List<Student> page = List.of(student(1L, "Вера Орлова", "vera@example.com"));
+        when(curatorService.studentsOfCurator(CURATOR_USERNAME)).thenReturn(List.of());
+        when(courseService.curators()).thenReturn(List.of());
+        when(curatorService.unassignedCandidates())
+                .thenReturn(new CuratorService.UnassignedCandidates(page, 210));
+
+        mockMvc.perform(get("/curator/students"))
+                .andExpect(content().string(containsString("Показаны первые 1 из 210.")));
     }
 }

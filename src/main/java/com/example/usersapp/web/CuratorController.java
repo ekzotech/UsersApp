@@ -29,7 +29,9 @@ public class CuratorController {
     public String students(Principal principal, Model model) {
         model.addAttribute("students", curatorService.studentsOfCurator(principal.getName()));
         model.addAttribute("curators", courseService.curators());
-        model.addAttribute("unassigned", curatorService.unassignedStudents());
+        CuratorService.UnassignedCandidates candidates = curatorService.unassignedCandidates();
+        model.addAttribute("unassigned", candidates.students());
+        model.addAttribute("unassignedTotal", candidates.total());
         return "curator/students";
     }
 

@@ -54,7 +54,7 @@ public class CuratorService {
 
     /**
      * A curator takes an unassigned active student. Readable only through the curator page, where
-     * {@link #unassignedStudents()} lists the candidates.
+     * {@link #unassignedCandidates()} lists the candidates.
      */
     @Transactional
     public Student claimCurator(String username, Long studentId) {
@@ -70,9 +70,22 @@ public class CuratorService {
         return studentRepository.save(student);
     }
 
+    /**
+     * How many candidates the curator page renders. The seed leaves a large pool of curator-less
+     * students (hundreds); rendering all of them would push a multi-megabyte page on every load.
+     */
+    public static final int UNASSIGNED_PAGE_SIZE = 50;
+
+    /** A page of candidates plus the total, so the page can say how many remain. */
+    public record UnassignedCandidates(List<Student> students, long total) {
+    }
+
     @Transactional(readOnly = true)
-    public List<Student> unassignedStudents() {
-        return studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName();
+    public UnassignedCandidates unassignedCandidates() {
+        List<Student> all = studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName();
+        return new UnassignedCandidates(
+                all.stream().limit(UNASSIGNED_PAGE_SIZE).toList(),
+                all.size());
     }
 
     @Transactional(readOnly = true)
