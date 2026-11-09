@@ -70,6 +70,11 @@ class SeedRunnerTest {
 
     private SeedProperties properties;
 
+    /**
+     * Mocks are created by hand because the stubs are shared through helpers: {@code MockitoExtension}'s
+     * strict stubbing (the default) would be replaced by a {@code MockitoSession} with {@code STRICT_STUBS}
+     * if argument-matching lint is wanted here.
+     */
     @BeforeEach
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);

@@ -151,9 +151,9 @@ public class SeedRunner implements ApplicationRunner {
                 continue;
             }
             Student student = students.get(i);
-            // A student is led by one teacher per course. A second slot that would repeat a course (an odd
-            // catalogue does that) moves on to the next course instead, so two assignments are placed
-            // whenever the catalogue is large enough.
+            // A student is led by one teacher per course. The second slot skips a course the student already
+            // has: without this, an odd catalogue or an exhausted (teacher, course) budget silently dropped
+            // the second enrolment instead of placing it on another course.
             Set<Course> taken = new HashSet<>();
             for (int offset = 0; offset < courses.size() && taken.size() < 2; offset++) {
                 Course course = courses.get((i + offset) % courses.size());
