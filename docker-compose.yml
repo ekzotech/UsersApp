@@ -31,7 +31,7 @@ services:
       DB_USER: usersapp
       DB_PASSWORD: usersapp
       SEED_ENABLED: "${SEED_ENABLED:-true}"
-      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-admin12345}
+      APP_ADMIN_PASSWORD: "${APP_ADMIN_PASSWORD:-admin12345}"
     ports:
       - "8081:8080"
     restart: unless-stopped
