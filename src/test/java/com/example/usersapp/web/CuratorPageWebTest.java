@@ -37,8 +37,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Amendment (11): the curator page renders {@code student.curator.fullName} from detached entities
- * (open-in-view=false), so only a full-context render proves the service's in-transaction touch.
+ * Full-context render tests for pages that touch lazy associations with {@code open-in-view=false}.
+ *
+ * <p>The teacher profile test is a proven guard: removing the {@code @EntityGraph} from
+ * {@code EnrollmentRepository.findByTeacherIdOrderByCourseTitleAscStudentFullNameAsc} makes it fail with
+ * {@code LazyInitializationException}. The curator page test only documents the rendered output - a
+ * test-managed context hands back an already-initialised proxy, so it cannot discriminate the
+ * in-transaction touch in {@code CuratorService.studentsOfCurator}; that safeguard is covered by the
+ * service-level tests and {@code db/CuratorPageRenderingIT}.
  */
 @SpringBootTest(classes = UsersAppApplication.class)
 @AutoConfigureMockMvc
@@ -97,6 +103,26 @@ class CuratorPageWebTest {
 
         assertThat(html).contains(STUDENT_NAME);
         assertThat(html).as("the curator column renders student.curator.fullName").contains(CURATOR_NAME);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void teacherProfileWithoutActiveStudentsOffersNoAssignForm() throws Exception {
+        Course algebra = courseRepository.save(CourseFixtures.course("probe-noactive-" + suffix(), "Алгебра"));
+        Teacher teacher = TeacherFixtures.teacher("Ольга Безстудентов", "noactive-" + suffix() + "@example.com");
+        teacher.getCourses().add(algebra);
+        Teacher saved = teacherRepository.saveAndFlush(teacher);
+        Student dismissed = new Student("Павел Отчисленный", "dismissed-" + suffix() + "@example.com", "ИС-12");
+        dismissed.setActive(false);
+        studentRepository.saveAndFlush(dismissed);
+
+        String html = mockMvc.perform(get("/teachers/" + saved.getId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(UTF_8);
+
+        assertThat(html).as("an empty select is an action that can never succeed").doesNotContain("name=\"studentId\"");
+        assertThat(html).contains("Нет активных студентов для назначения.");
+        assertThat(html).as("dismissed students are not offered").doesNotContain("Павел Отчисленный");
     }
 
     @Test

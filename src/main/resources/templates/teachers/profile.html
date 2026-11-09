@@ -38,7 +38,8 @@
 
     <h2>Назначить студента</h2>
     <p th:if="${#sets.isEmpty(teacher.courses)}">Сначала закрепите за преподавателем предмет.</p>
-    <section th:each="course : ${coursesByTitle}">
+    <p th:if="${not #sets.isEmpty(teacher.courses) and #lists.isEmpty(students)}">Нет активных студентов для назначения.</p>
+    <section th:each="course : ${coursesByTitle}" th:if="${not #lists.isEmpty(students)}">
         <h3 th:text="${course.title}">Математика</h3>
         <form th:action="@{/teachers/{id}/courses/{cid}/students(id=${teacher.id}, cid=${course.id})}" method="post">
             <label th:for="'studentId-' + ${course.id}" th:text="'Студент на предмет «' + ${course.title} + '»'">Студент</label>
