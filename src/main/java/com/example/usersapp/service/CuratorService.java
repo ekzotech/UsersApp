@@ -54,7 +54,7 @@ public class CuratorService {
 
     /**
      * A curator takes an unassigned active student. Readable only through the curator page, where
-     * {@link #unassignedCandidates()} lists the candidates.
+     * {@code unassignedCandidates(String)} lists the candidates.
      */
     @Transactional
     public Student claimCurator(String username, Long studentId) {
