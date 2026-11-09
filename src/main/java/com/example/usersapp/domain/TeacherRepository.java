@@ -16,5 +16,4 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 
     List<Teacher> findByCuratorTrueAndActiveTrueOrderByFullName();
 
-    List<Teacher> findByActiveTrueOrderByFullName();
 }

@@ -314,8 +314,8 @@ mvn -B spring-boot:run -Dspring-boot.run.arguments=--server.port=8082  # дру�
 ```
 
 `mvn test` запускает **и** `*Test`, **и** `*IT` — все классы сразу (так настроен `maven-surefire-plugin`
-в `pom.xml`: `<include>**/*Test.java</include>` + `<include>**/*IT.java</include>`). Всего 215
-тестовых методов в 28 классах (`grep -rc "@Test" src/test`).
+в `pom.xml`: `<include>**/*Test.java</include>` + `<include>**/*IT.java</include>`). Всего выполняется 202
+теста в 29 классах (`grep -c "@Test"` даёт больше: он считает и упоминания в комментариях).
 
 | Слой | Классы | Что проверяет | Что нужно |
 |---|---|---|---|
@@ -329,7 +329,7 @@ Testcontainers поднимает контейнер `postgres:17-alpine` для
 
 ```bash
 ./scripts/task-runner.sh test-class StudentServiceTest
-./scripts/task-runner.sh test-class seed.SeedRunnerTest#seedIsIdempotent
+./scripts/task-runner.sh test-class seed.SeedRunnerTest#doesNothingWhenUsersExist
 ```
 
 Почему в `pom.xml` задан `-Dapi.version=1.44` (в `<argLine>` для surefire): docker-java, которым
@@ -593,6 +593,8 @@ git log --oneline --graph --all              # вся история вмест�
   Уникальность назначения на пару «студент + преподаватель + предмет» держит индекс БД, но
   «один преподаватель на предмет» и лимит 60 — только сервис.
 - **Нечисловые `id`** (`/teachers/abc`) → HTTP 400, а не 404; несуществующий числовой `id` → 404.
+- **404 для анонимного пользователя** — редирект на `/login`: авторизация срабатывает раньше
+  обработки ошибки, поэтому страницу `error/404.html` видят только вошедшие пользователи.
 - **E2E мутируют данные** (создают записи, меняют статусы), объём данных на volume растёт — сброс
   `docker compose down -v` перед демо/длинной серией прогонов.
 - **Куратор назначается только на странице куратора**: администратор не может назначить куратора из

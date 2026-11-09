@@ -53,14 +53,4 @@ class CourseServiceTest {
 
         verify(teacherRepository).findByCuratorTrueAndActiveTrueOrderByFullName();
     }
-
-    @Test
-    void findByCourseDelegates() {
-        List<Teacher> teachers = List.of(TeacherFixtures.teacher("Иван Иванов", "ivanov@example.com"));
-        when(teacherRepository.findByCoursesIdOrderByFullName(3L)).thenReturn(teachers);
-
-        assertThat(service.findByCourse(3L)).isEqualTo(teachers);
-
-        verify(teacherRepository).findByCoursesIdOrderByFullName(3L);
-    }
 }

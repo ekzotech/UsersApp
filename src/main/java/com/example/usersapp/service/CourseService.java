@@ -25,10 +25,6 @@ public class CourseService {
         return courseRepository.findAll(Sort.by("title"));
     }
 
-    public List<Teacher> findByCourse(Long courseId) {
-        return teacherRepository.findByCoursesIdOrderByFullName(courseId);
-    }
-
     public List<Teacher> curators() {
         return teacherRepository.findByCuratorTrueAndActiveTrueOrderByFullName();
     }

@@ -59,21 +59,6 @@ class CuratorRepositoryIT extends PostgresTestBase {
     }
 
     @Test
-    void findsActiveTeachersInNameOrder() {
-        Teacher dismissed = teacher("Борис Уволенный", "boris@example.com");
-        dismissed.setActive(false);
-        teacherRepository.saveAll(List.of(
-                teacher("Олег Активов", "oleg@example.com"),
-                curator("Алина Активова", "alina@example.com"),
-                dismissed));
-        teacherRepository.flush();
-
-        assertThat(teacherRepository.findByActiveTrueOrderByFullName())
-                .extracting(Teacher::getFullName)
-                .containsExactly("Алина Активова", "Олег Активов");
-    }
-
-    @Test
     void findsStudentsOfCuratorInNameOrder() {
         Teacher curator = curator("Пётр Кураторов", "curator-repo@example.com");
         teacherRepository.saveAndFlush(curator);
