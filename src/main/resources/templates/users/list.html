@@ -64,7 +64,10 @@
             </thead>
             <tbody>
             <tr th:each="t : ${teachers}">
-                <td data-label="ФИО"><a th:href="@{/teachers/{id}(id=${t.id})}" th:text="${t.fullName}">Иван Иванов</a></td>
+                <td data-label="ФИО">
+                    <a th:if="${canAdminister}" th:href="@{/teachers/{id}(id=${t.id})}" th:text="${t.fullName}">Иван Иванов</a>
+                    <span th:unless="${canAdminister}" th:text="${t.fullName}">Иван Иванов</span>
+                </td>
                 <td data-label="Email" th:text="${t.email}">ivanov@example.com</td>
                 <td data-label="Статус" th:text="${t.displayStatus}">Активен</td>
                 <td data-label="Роль">

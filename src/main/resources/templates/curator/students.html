@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Мои студенты', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Мои студенты</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1 th:text="'Мои студенты (' + ${#lists.size(students)} + ')'">Мои студенты (0)</h1>
+
+    <table class="data" th:if="${!#lists.isEmpty(students)}">
+        <thead>
+        <tr>
+            <th scope="col">ФИО</th>
+            <th scope="col">Группа</th>
+            <th scope="col">Статус</th>
+            <th scope="col">Куратор</th>
+            <th scope="col">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${students}">
+            <td data-label="ФИО" th:text="${s.fullName}">Анна Смирнова</td>
+            <td data-label="Группа" th:text="${s.groupName}">ИС-11</td>
+            <td data-label="Статус" th:text="${s.displayStatus}">Активен</td>
+            <td data-label="Куратор" th:text="${s.curator != null ? s.curator.fullName : '—'}">—</td>
+            <td data-label="Действия">
+                <form th:if="${s.active}"
+                      th:action="@{/curator/students/{id}/curator(id=${s.id})}"
+                      method="post">
+                    <label th:for="'curatorId-' + ${s.id}" th:text="'Куратор для ' + ${s.fullName}">Куратор</label>
+                    <select th:id="'curatorId-' + ${s.id}" name="curatorId">
+                        <option value="">— без куратора —</option>
+                        <option th:each="c : ${curators}"
+                                th:value="${c.id}"
+                                th:selected="${s.curator != null and s.curator.id == c.id}"
+                                th:text="${c.fullName}">Пётр Кураторов</option>
+                    </select>
+                    <button type="submit" th:text="'Сохранить'">Сохранить</button>
+                    <!-- Posts without a curator: the empty field value overrides the selected option. -->
+                    <button type="submit"
+                            class="link-button"
+                            name="curatorId"
+                            value=""
+                            th:formaction="@{/curator/students/{id}/curator(id=${s.id})}"
+                            th:text="'Снять куратора'">Снять куратора</button>
+                </form>
+                <p th:unless="${s.active}">Студент отчислен: куратора изменить нельзя.</p>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(students)}">У вас пока нет студентов.</p>
+
+    <p><a th:href="@{/users}">← К списку пользователей</a></p>
+</main>
+</body>
+</html>

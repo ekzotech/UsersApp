@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Преподаватель', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Преподаватель</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1 th:text="${teacher.fullName}">Иван Иванов</h1>
+    <p>
+        <span th:text="${teacher.displayStatus}">Активен</span>
+        <span class="badge" th:if="${teacher.curator}">Куратор</span>
+    </p>
+    <p th:text="${teacher.email}">ivanov@example.com</p>
+
+    <h2>Предметы</h2>
+    <p th:if="${#sets.isEmpty(teacher.courses)}">Предметы не закреплены.</p>
+    <ul class="badges" th:unless="${#sets.isEmpty(teacher.courses)}">
+        <li th:each="course : ${coursesByTitle}" class="badge" th:text="${course.title}">Математика</li>
+    </ul>
+
+    <h2 th:text="'Студенты по предметам (' + ${#lists.size(enrollments)} + ')'">Студенты по предметам (0)</h2>
+    <table class="data" th:if="${!#lists.isEmpty(enrollments)}">
+        <thead>
+        <tr>
+            <th scope="col">Студент</th>
+            <th scope="col">Предмет</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="e : ${enrollments}">
+            <td data-label="Студент" th:text="${e.student.fullName}">Анна Смирнова</td>
+            <td data-label="Предмет" th:text="${e.course.title}">Математика</td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(enrollments)}">Нет назначенных студентов.</p>
+
+    <h2>Назначить студента</h2>
+    <p th:if="${#sets.isEmpty(teacher.courses)}">Сначала закрепите за преподавателем предмет.</p>
+    <p th:if="${not #sets.isEmpty(teacher.courses) and #lists.isEmpty(students)}">Нет активных студентов для назначения.</p>
+    <section th:each="course : ${coursesByTitle}" th:if="${not #lists.isEmpty(students)}">
+        <h3 th:text="${course.title}">Математика</h3>
+        <form th:action="@{/teachers/{id}/courses/{cid}/students(id=${teacher.id}, cid=${course.id})}" method="post">
+            <label th:for="'studentId-' + ${course.id}" th:text="'Студент на предмет «' + ${course.title} + '»'">Студент</label>
+            <select th:id="'studentId-' + ${course.id}" name="studentId">
+                <option th:each="s : ${students}" th:value="${s.id}" th:text="${s.fullName}">Анна Смирнова</option>
+            </select>
+            <button type="submit">Назначить</button>
+        </form>
+    </section>
+
+    <p><a th:href="@{/teachers}">← К списку преподавателей</a></p>
+</main>
+</body>
+</html>
