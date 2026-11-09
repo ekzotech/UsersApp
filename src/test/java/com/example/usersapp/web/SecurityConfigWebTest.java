@@ -25,6 +25,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -37,6 +38,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // This class declares its own static @Container: Testcontainers restarts it for the next test
 // class while Spring would reuse the cached context pointing at the dead port (see IMPLEMENTATION.md).
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// The seed profile is the default profile; only SeedIntegrationIT starts it, these contexts must not seed.
+@TestPropertySource(properties = "app.seed.enabled=false")
 class SecurityConfigWebTest {
 
     @Autowired

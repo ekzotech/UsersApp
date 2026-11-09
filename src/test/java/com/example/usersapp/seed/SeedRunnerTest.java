@@ -9,7 +9,6 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import com.example.usersapp.domain.Course;
 import com.example.usersapp.domain.CourseFixtures;
@@ -31,17 +30,22 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
 import net.datafaker.Faker;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Mockito's own extension is not used: its "unnecessary stubbing" check silently reported unused stubs
+ * without test code and was unreliable here, and the tests stub exactly what each scenario needs. The mocks
+ * are opened per test through {@link MockitoAnnotations}.
+ */
 class SeedRunnerTest {
 
     @Mock
@@ -62,11 +66,19 @@ class SeedRunnerTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    private AutoCloseable mocks;
+
     private SeedProperties properties;
 
     @BeforeEach
     void setUp() {
+        mocks = MockitoAnnotations.openMocks(this);
         properties = new SeedProperties();
+    }
+
+    @AfterEach
+    void closeMocks() throws Exception {
+        mocks.close();
     }
 
     @Test
@@ -82,7 +94,7 @@ class SeedRunnerTest {
 
     @Test
     void doesNothingWhenUsersExist() {
-        when(userRepository.count()).thenReturn(1L);
+        Mockito.when(userRepository.count()).thenReturn(1L);
 
         runner(faker()).run(null);
 
@@ -96,7 +108,7 @@ class SeedRunnerTest {
         properties.setTeachers(3);
         properties.setCurators(2);
         properties.setStudents(10);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -109,7 +121,7 @@ class SeedRunnerTest {
         properties.setTeachers(3);
         properties.setCurators(2);
         properties.setStudents(10);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -128,7 +140,7 @@ class SeedRunnerTest {
         properties.setTeachers(3);
         properties.setCurators(2);
         properties.setStudents(10);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -149,7 +161,7 @@ class SeedRunnerTest {
         properties.setTeachers(12);
         properties.setCurators(6);
         properties.setStudents(20);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -169,7 +181,7 @@ class SeedRunnerTest {
         properties.setTeachers(3);
         properties.setCurators(2);
         properties.setStudents(10);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -191,11 +203,11 @@ class SeedRunnerTest {
         properties.setTeachers(3);
         properties.setCurators(2);
         properties.setStudents(10);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
         runner(faker()).run(null);
         List<Student> firstRun = savedStudents();
 
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
         clearInvocations(studentRepository);
         runner(faker()).run(null);
         List<Student> secondRun = savedStudents();
@@ -211,7 +223,7 @@ class SeedRunnerTest {
         properties.setTeachers(24);
         properties.setCurators(6);
         properties.setStudents(400);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -232,20 +244,14 @@ class SeedRunnerTest {
     @Test
     void enrolsEveryCourseAStudentMeets() {
         // Twelve students walk the catalogue in pairs (0 meets 1+2, 2 meets 3+4, ... 10 meets 11+12), so the
-        // whole catalogue is met and the last student's second course is only reachable through the free
-        // teacher of that course rather than the first teacher who happens to teach it.
+        // whole catalogue is met; the last course is only reachable through the free teacher of that course.
         properties.setTeachers(12);
         properties.setCurators(2);
         properties.setStudents(12);
-        List<Course> courses = new ArrayList<>();
-        for (int i = 1; i <= 12; i++) {
-            Course course = CourseFixtures.course("course-" + i, "Предмет " + i);
-            ReflectionTestUtils.setField(course, "id", (long) i);
-            courses.add(course);
-        }
-        when(courseRepository.findAll(any(Sort.class))).thenReturn(courses);
-        when(userRepository.count()).thenReturn(0L);
-        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+        List<Course> courses = catalogue(12);
+        Mockito.when(courseRepository.findAll(any(Sort.class))).thenReturn(courses);
+        Mockito.when(userRepository.count()).thenReturn(0L);
+        Mockito.when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
 
         runner(faker()).run(null);
 
@@ -255,11 +261,55 @@ class SeedRunnerTest {
     }
 
     @Test
+    void neverEnrolsTheSameStudentTwiceInACourseWithDifferentTeachers() {
+        // An odd catalogue makes the second slot of some students repeat their first course; a student with
+        // exactly two places must get a different course there instead (no course twice, two per student).
+        properties.setTeachers(4);
+        properties.setCurators(1);
+        properties.setStudents(20);
+        Mockito.when(courseRepository.findAll(any(Sort.class))).thenReturn(catalogue(13));
+        Mockito.when(userRepository.count()).thenReturn(0L);
+        Mockito.when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+
+        runner(faker()).run(null);
+
+        List<Enrollment> enrollments = savedEnrollments();
+        assertThat(enrollments).isNotEmpty();
+        assertThat(enrollments)
+                .extracting(enrollment -> enrollment.getStudent().getEmail() + " " + enrollment.getCourse().getId())
+                .as("a student gets one teacher per course at most")
+                .doesNotHaveDuplicates();
+        assertThat(enrollments.stream().map(enrollment -> enrollment.getStudent().getEmail()).distinct().toList())
+                .as("every second student is still enrolled").hasSize(properties.getStudents() / 2);
+        assertThat(enrollments).as("two courses per enrolled student").hasSize(properties.getStudents() / 2 * 2);
+    }
+
+    @Test
+    void enrolsAsManyCoursesAsTheTeacherPatternAllows() {
+        // Three teachers over the 12 catalogue courses, two courses each: one teacher can be at the
+        // per-(teacher, course) limit of 30, the other two keep room for all ten places each student asks
+        // for, so all 10 of the even students get their two courses.
+        properties.setTeachers(3);
+        properties.setCurators(1);
+        properties.setStudents(20);
+        givenEmptyDatabaseWithTheCatalogue();
+
+        runner(faker()).run(null);
+
+        List<Enrollment> enrollments = savedEnrollments();
+        assertThat(enrollments).isNotEmpty();
+        assertThat(enrollments).hasSize(properties.getStudents() / 2 * 2);
+        assertThat(enrollments)
+                .extracting(enrollment -> enrollment.getStudent().getEmail() + " " + enrollment.getCourse().getId())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
     void enrolledCountMatchesTheEnrollmentsSaved() {
         properties.setTeachers(12);
         properties.setCurators(2);
         properties.setStudents(20);
-        givenEmptyDatabase();
+        givenEmptyDatabaseWithTheCatalogue();
 
         runner(faker()).run(null);
 
@@ -270,24 +320,21 @@ class SeedRunnerTest {
         assertThat(enrollments).hasSize(properties.getStudents() / 2 * 2);
     }
 
-    private void givenEmptyDatabase() {
-        when(userRepository.count()).thenReturn(0L);
-        givenCourses();
-        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
+    /** An empty users table and the 12 catalogue courses as the migrations insert them (ids 1..12). */
+    private void givenEmptyDatabaseWithTheCatalogue() {
+        Mockito.when(userRepository.count()).thenReturn(0L);
+        Mockito.when(courseRepository.findAll(any(Sort.class))).thenReturn(catalogue(12));
+        Mockito.when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "enc:" + invocation.getArgument(0));
     }
 
-    /**
-     * The 12 catalogue courses as the migrations insert them, ids 1..12: the seed picks courses by id when
-     * it splits them between the teachers, so the fixtures carry ids just like the database rows.
-     */
-    private List<Course> givenCourses() {
+    private static List<Course> catalogue(int size) {
         List<Course> courses = new ArrayList<>();
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= size; i++) {
             Course course = CourseFixtures.course("course-" + i, "Предмет " + i);
+            // The migrations insert ids 1..n, and the seed handles the catalogue in that order.
             ReflectionTestUtils.setField(course, "id", (long) i);
             courses.add(course);
         }
-        when(courseRepository.findAll(any(Sort.class))).thenReturn(List.copyOf(courses));
         return courses;
     }
 

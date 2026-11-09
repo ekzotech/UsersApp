@@ -16,8 +16,10 @@ import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.datafaker.Faker;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -149,12 +151,20 @@ public class SeedRunner implements ApplicationRunner {
                 continue;
             }
             Student student = students.get(i);
-            for (int k = 0; k < 2; k++) {
-                Course course = courses.get((i + k) % courses.size());
+            // A student is led by one teacher per course. A second slot that would repeat a course (an odd
+            // catalogue does that) moves on to the next course instead, so two assignments are placed
+            // whenever the catalogue is large enough.
+            Set<Course> taken = new HashSet<>();
+            for (int offset = 0; offset < courses.size() && taken.size() < 2; offset++) {
+                Course course = courses.get((i + offset) % courses.size());
+                if (taken.contains(course)) {
+                    continue;
+                }
                 Teacher teacher = nextTeacher(teachers, course, load);
                 if (teacher == null) {
                     continue;
                 }
+                taken.add(course);
                 load.merge(new TeacherCourse(teacher, course), 1, Integer::sum);
                 enrollmentRepository.save(new Enrollment(teacher, student, course));
                 created++;

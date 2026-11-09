@@ -13,11 +13,11 @@ import com.example.usersapp.domain.UserRole;
 import com.example.usersapp.service.CuratorService;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.hibernate.Hibernate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,6 +34,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// The seed profile is the default profile; only SeedIntegrationIT starts it, these contexts must not seed.
+@TestPropertySource(properties = "app.seed.enabled=false")
 class CuratorPageRenderingIT {
 
     @Container
@@ -57,13 +59,6 @@ class CuratorPageRenderingIT {
         studentRepository.deleteAll();
         userRepository.deleteAll();
         teacherRepository.deleteAll();
-    }
-
-    @BeforeEach
-    void giveTheSeedUsernameBack() {
-        // The context starts the seed profile (application.properties default), and "curator1" is the
-        // username of the demo curator it creates on an empty database.
-        userRepository.findByUsername("curator1").ifPresent(user -> userRepository.deleteById(user.getId()));
     }
 
     @Test
