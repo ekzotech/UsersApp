@@ -23,6 +23,13 @@ Docker must be running for Testcontainers (@DataJpaTest / @SpringBootTest integr
 | DB integration | `db/*IT` | `@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")` + `@AutoConfigureTestDatabase(replace = NONE)` + `@ServiceConnection` `PostgreSQLContainer<>("postgres:17-alpine")`. Flyway runs migrations. |
 | Full context | `*IT` with `@SpringBootTest` | Same container pattern; add `@MockitoBean CustomUserDetailsService` where login data is irrelevant. |
 
+DB test classes end with `@DirtiesContext(classMode = AFTER_CLASS)` (the base `PostgresTestBase` already
+carries it) because Testcontainers restarts a shared static `@Container` for each test class while Spring
+caches a context that would still point at the previous class's dead port. A plain `@SpringBootTest`
+class that declares its **own** static `@Container` must repeat that annotation
+(`SecurityConfigWebTest` does), otherwise identical cross-class failures appear once more
+`@SpringBootTest` ITs exist.
+
 Surefire runs `*Test`; failsafe-style `*IT` classes are bound into the `test` phase by the
 `maven-surefire-plugin` configuration (see pom `<includes>`), so `mvn test` runs everything.
 
