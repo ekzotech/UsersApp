@@ -6,8 +6,10 @@ cross-cutting decisions every task must follow.
 ## Stack
 
 - Java 21, Spring Boot 3.5.6, Maven (`./mvnw` is not provided — use `mvn`).
-- Spring MVC + Thymeleaf, Spring Security (form login, BCrypt, CSRF on), Spring Data JPA, Flyway,
-  Lombok, datafaker 2.4.2.
+- Spring MVC + Thymeleaf, Spring Security (form login, delegating `PasswordEncoder` that stores
+  `{bcrypt}…` hashes, CSRF on), Spring Data JPA, Flyway, Lombok, datafaker 2.4.2.
+- Stored password hashes must come from `PasswordEncoder.encode(...)`; a delegating encoder rejects
+  bare `$2a$…` hashes, so tests build hashes via `encode()` or a `{bcrypt}`-prefixed literal.
 - DB: PostgreSQL (compose image `postgres:17-alpine`; tests use Testcontainers).
 
 ## Commands

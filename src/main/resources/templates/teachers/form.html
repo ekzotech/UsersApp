@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Новый преподаватель', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Новый преподаватель</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1>Новый преподаватель</h1>
+    <form th:action="@{/teachers/new}" th:object="${form}" method="post">
+        <label for="fullName">ФИО</label>
+        <input id="fullName" type="text" th:field="*{fullName}" autocomplete="name">
+        <span class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}">Ошибка</span>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" th:field="*{email}" autocomplete="email">
+        <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Ошибка</span>
+
+        <label><input id="curator" type="checkbox" th:field="*{curator}"> Куратор</label>
+        <span class="field-error" th:if="${#fields.hasErrors('curator')}" th:errors="*{curator}">Ошибка</span>
+
+        <label for="username">Логин</label>
+        <input id="username" type="text" th:field="*{username}" autocomplete="username">
+        <span class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}">Ошибка</span>
+
+        <label for="password">Пароль</label>
+        <input id="password" type="password" th:field="*{password}" autocomplete="new-password">
+        <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Ошибка</span>
+
+        <button type="submit">Создать</button>
+    </form>
+    <p><a th:href="@{/users}">← К списку пользователей</a></p>
+</main>
+</body>
+</html>

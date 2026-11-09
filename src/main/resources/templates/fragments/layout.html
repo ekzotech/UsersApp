@@ -16,6 +16,7 @@
 </header>
 <main>
     <p th:if="${param.logout}" class="flash success">Вы вышли из системы.</p>
+    <p th:if="${success}" class="flash success" th:text="${success}">Готово</p>
     <p th:if="${error}" class="flash error" th:text="${error}">Ошибка</p>
     <th:block th:replace="${content}"/>
 </main>
