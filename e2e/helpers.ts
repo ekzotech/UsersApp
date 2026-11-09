@@ -31,6 +31,15 @@ export function unique(suffix = 'e2e'): string {
 }
 
 /**
+ * A short random marker (`E2E-xxxxxxxx`) for data that must be findable through the catalog's substring
+ * search. Unlike `unique()`, it shares no prefix with earlier runs of the same suite or with the seed
+ * (`qa-student-<epochMs>@example.com`), so "exactly one row matches this search" is a real claim.
+ */
+export function uniqueToken(): string {
+  return `E2E-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
  * Logs in through the form on `/login` (templates/login.html: `#username`, `#password`, "Войти") and waits
  * for the authenticated layout, which renders the "Выйти" button.
  */
