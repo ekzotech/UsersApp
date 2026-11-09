@@ -81,8 +81,11 @@ public class CuratorService {
     }
 
     @Transactional(readOnly = true)
-    public UnassignedCandidates unassignedCandidates() {
-        List<Student> all = studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName();
+    public UnassignedCandidates unassignedCandidates(String query) {
+        List<Student> all = query == null || query.isBlank()
+                ? studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName()
+                : studentRepository.findByCuratorIsNullAndActiveTrueAndFullNameContainingIgnoreCaseOrderByFullName(
+                        query.strip());
         return new UnassignedCandidates(
                 all.stream().limit(UNASSIGNED_PAGE_SIZE).toList(),
                 all.size());

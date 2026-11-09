@@ -325,7 +325,7 @@ class CuratorServiceTest {
                 .toList();
         when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName()).thenReturn(all);
 
-        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates(null);
 
         assertThat(candidates.students()).hasSize(CuratorService.UNASSIGNED_PAGE_SIZE);
         assertThat(candidates.students().get(0).getFullName()).isEqualTo("Студент 1");
@@ -337,9 +337,20 @@ class CuratorServiceTest {
         when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName())
                 .thenReturn(List.of(student(1L, "Вера Орлова", "vera@example.com")));
 
-        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates(null);
 
         assertThat(candidates.students()).extracting(Student::getFullName).containsExactly("Вера Орлова");
         assertThat(candidates.total()).isEqualTo(1);
+    }
+
+    @Test
+    void unassignedCandidatesSearchByName() {
+        when(studentRepository.findByCuratorIsNullAndActiveTrueAndFullNameContainingIgnoreCaseOrderByFullName("орл"))
+                .thenReturn(List.of(student(1L, "Вера Орлова", "vera@example.com")));
+
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates(" орл ");
+
+        assertThat(candidates.students()).extracting(Student::getFullName).containsExactly("Вера Орлова");
+        verify(studentRepository, never()).findByCuratorIsNullAndActiveTrueOrderByFullName();
     }
 }

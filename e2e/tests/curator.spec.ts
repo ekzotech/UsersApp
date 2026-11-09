@@ -88,6 +88,12 @@ test('curator claims a student without a curator', async ({ page }) => {
   await expect(firstSelect).toBeVisible();
   const curatorName = (await firstSelect.locator('option:checked').innerText()).trim();
 
+  // The candidate list is capped at 50 rows, so find the new student through the search instead of
+  // relying on its position.
+  await page.getByLabel('Найти студента без куратора').fill(student.fullName);
+  await page.getByRole('button', { name: 'Найти' }).click();
+  await expect(page).toHaveURL(/[?&]find=/);
+
   const unassignedRow = page.locator('table.data tbody tr', { hasText: student.fullName });
   await expect(unassignedRow).toHaveCount(1);
   await expect(unassignedRow.getByRole('button', { name: 'Взять кураторство' })).toBeVisible();

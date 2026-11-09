@@ -14,4 +14,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     List<Student> findByCuratorIdOrderByFullName(Long curatorId);
 
     List<Student> findByCuratorIsNullAndActiveTrueOrderByFullName();
+
+    /** Case-insensitive substring search among active students without a curator. */
+    List<Student> findByCuratorIsNullAndActiveTrueAndFullNameContainingIgnoreCaseOrderByFullName(String fullName);
 }

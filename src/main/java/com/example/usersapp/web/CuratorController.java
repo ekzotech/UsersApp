@@ -26,12 +26,13 @@ public class CuratorController {
     }
 
     @GetMapping("/students")
-    public String students(Principal principal, Model model) {
+    public String students(@RequestParam(required = false) String find, Principal principal, Model model) {
         model.addAttribute("students", curatorService.studentsOfCurator(principal.getName()));
         model.addAttribute("curators", courseService.curators());
-        CuratorService.UnassignedCandidates candidates = curatorService.unassignedCandidates();
+        CuratorService.UnassignedCandidates candidates = curatorService.unassignedCandidates(find);
         model.addAttribute("unassigned", candidates.students());
         model.addAttribute("unassignedTotal", candidates.total());
+        model.addAttribute("find", find);
         return "curator/students";
     }
 
