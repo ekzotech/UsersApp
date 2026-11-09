@@ -30,6 +30,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -51,6 +52,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 // Its own static @Container: repeat the AFTER_CLASS option (see IMPLEMENTATION.md).
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// The seed profile is the default profile; only SeedIntegrationIT starts it, these contexts must not seed.
+@TestPropertySource(properties = "app.seed.enabled=false")
 class CuratorPageWebTest {
 
     private static final String CURATOR_NAME = "Марина Курилова";

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.hibernate.Hibernate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,6 +34,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// The seed profile is the default profile; only SeedIntegrationIT starts it, these contexts must not seed.
+@TestPropertySource(properties = "app.seed.enabled=false")
 class CuratorPageRenderingIT {
 
     @Container
