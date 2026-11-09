@@ -17,7 +17,7 @@
 
     <section>
         <h2 th:text="'Студенты (' + ${#lists.size(students)} + ')'">Студенты (0)</h2>
-        <p><a th:href="@{/students/new}">+ Студент</a></p>
+        <p th:if="${canAdminister}"><a th:href="@{/students/new}">+ Студент</a></p>
         <table class="data" th:if="${!#lists.isEmpty(students)}">
             <thead>
             <tr>
@@ -37,10 +37,10 @@
                 <td data-label="Статус" th:text="${s.displayStatus}">Активен</td>
                 <td data-label="Куратор" th:text="${s.curator != null ? s.curator.fullName : '—'}">—</td>
                 <td data-label="Действия">
-                    <form th:if="${s.active}" th:action="@{/students/{id}/deactivate(id=${s.id})}" method="post">
+                    <form th:if="${s.active and canAdminister}" th:action="@{/students/{id}/deactivate(id=${s.id})}" method="post">
                         <button type="submit" class="link-button">Деактивировать</button>
                     </form>
-                    <form th:unless="${s.active}" th:action="@{/students/{id}/activate(id=${s.id})}" method="post">
+                    <form th:if="${!s.active and canAdminister}" th:action="@{/students/{id}/activate(id=${s.id})}" method="post">
                         <button type="submit" class="link-button">Активировать</button>
                     </form>
                 </td>

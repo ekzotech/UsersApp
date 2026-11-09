@@ -101,6 +101,41 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "TEACHER")
+    void teacherSeesNoAdminActions() throws Exception {
+        when(studentService.findAll(null)).thenReturn(List.of(student("Анна Смирнова", "anna@example.com", true)));
+        when(teacherService.findAll()).thenReturn(List.of());
+
+        mockMvc.perform(get("/users"))
+                .andExpect(model().attribute("canAdminister", false))
+                .andExpect(content().string(not(containsString("/students/new"))))
+                .andExpect(content().string(not(containsString("/deactivate"))));
+    }
+
+    @Test
+    void adminSeesAdminActions() throws Exception {
+        Student active = student("Анна Смирнова", "anna@example.com", true);
+        active.setId(1L);
+        when(studentService.findAll(null)).thenReturn(List.of(active));
+        when(teacherService.findAll()).thenReturn(List.of());
+
+        mockMvc.perform(get("/users"))
+                .andExpect(model().attribute("canAdminister", true))
+                .andExpect(content().string(containsString("/students/new")))
+                .andExpect(content().string(containsString("/students/1/deactivate")));
+    }
+
+    @Test
+    void studentNamesAreHtmlEscaped() throws Exception {
+        when(studentService.findAll(null)).thenReturn(List.of(student("<script>alert(1)</script>", "x@example.com", true)));
+        when(teacherService.findAll()).thenReturn(List.of());
+
+        mockMvc.perform(get("/users"))
+                .andExpect(content().string(containsString("&lt;script&gt;alert(1)&lt;/script&gt;")))
+                .andExpect(content().string(not(containsString("<script>alert(1)</script>"))));
+    }
+
+    @Test
     void studentsListOffersDeactivateForActiveAndActivateForInactive() throws Exception {
         Student active = student("Анна Смирнова", "anna@example.com", true);
         active.setId(1L);
