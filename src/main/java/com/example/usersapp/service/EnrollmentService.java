@@ -71,6 +71,8 @@ public class EnrollmentService {
 
     @Transactional(readOnly = true)
     public List<Enrollment> studentsOfTeacher(Long teacherId) {
+        // The profile page renders student names and course titles after this transaction ends
+        // (open-in-view=false); the repository query fetches both associations eagerly.
         return enrollmentRepository.findByTeacherIdOrderByCourseTitleAscStudentFullNameAsc(teacherId);
     }
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.usersapp.domain.CourseFixtures;
 import com.example.usersapp.domain.Teacher;
 import com.example.usersapp.domain.TeacherFixtures;
 import com.example.usersapp.domain.TeacherRepository;
@@ -55,6 +56,26 @@ class TeacherServiceTest {
         assertThat(service().findAll()).isEqualTo(all);
 
         verify(teacherRepository).findAll(BY_NAME);
+    }
+
+    @Test
+    void findByIdReturnsTeacherWithCourses() {
+        Teacher teacher = TeacherFixtures.teacher(FULL_NAME, EMAIL);
+        teacher.getCourses().add(CourseFixtures.course("math", "Математика"));
+        when(teacherRepository.findWithCoursesById(1L)).thenReturn(Optional.of(teacher));
+
+        assertThat(service().findById(1L)).isSameAs(teacher);
+
+        verify(teacherRepository).findWithCoursesById(1L);
+    }
+
+    @Test
+    void findByIdUnknownTeacherThrows() {
+        when(teacherRepository.findWithCoursesById(77L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().findById(77L))
+                .isInstanceOf(TeacherNotFoundException.class)
+                .hasMessage("Преподаватель не найден: 77");
     }
 
     @Test

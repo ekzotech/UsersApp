@@ -126,6 +126,30 @@ class UserControllerTest {
     }
 
     @Test
+    void adminSeesTeacherProfileLinks() throws Exception {
+        when(studentService.findAll(null)).thenReturn(List.of());
+        when(teacherService.findAll()).thenReturn(List.of(curatorTeacher()));
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/teachers/3\"")))
+                .andExpect(content().string(containsString(">Пётр Кураторов</a>")));
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void teacherSeesPlainTeacherNamesWithoutProfileLinks() throws Exception {
+        // /teachers/** is ADMIN-only: a TEACHER clicking such a link would get a 403.
+        when(studentService.findAll(null)).thenReturn(List.of());
+        when(teacherService.findAll()).thenReturn(List.of(curatorTeacher()));
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Пётр Кураторов")))
+                .andExpect(content().string(not(containsString("href=\"/teachers/"))));
+    }
+
+    @Test
     void studentNamesAreHtmlEscaped() throws Exception {
         when(studentService.findAll(null)).thenReturn(List.of(student("<script>alert(1)</script>", "x@example.com", true)));
         when(teacherService.findAll()).thenReturn(List.of());

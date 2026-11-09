@@ -32,6 +32,12 @@ public class TeacherService {
         return teacherRepository.findAll(Sort.by("fullName"));
     }
 
+    @Transactional(readOnly = true)
+    public Teacher findById(Long id) {
+        // Courses are read by the profile template after this transaction ends.
+        return teacherRepository.findWithCoursesById(id).orElseThrow(() -> new TeacherNotFoundException(id));
+    }
+
     @Transactional
     public Teacher create(TeacherForm form) {
         String fullName = form.getFullName().strip();
