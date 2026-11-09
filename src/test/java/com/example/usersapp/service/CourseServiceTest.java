@@ -45,6 +45,16 @@ class CourseServiceTest {
     }
 
     @Test
+    void curatorsReturnsActiveCurators() {
+        List<Teacher> curators = List.of(TeacherFixtures.teacher("Пётр Кураторов", "curator@example.com"));
+        when(teacherRepository.findByCuratorTrueAndActiveTrueOrderByFullName()).thenReturn(curators);
+
+        assertThat(service.curators()).isEqualTo(curators);
+
+        verify(teacherRepository).findByCuratorTrueAndActiveTrueOrderByFullName();
+    }
+
+    @Test
     void findByCourseDelegates() {
         List<Teacher> teachers = List.of(TeacherFixtures.teacher("Иван Иванов", "ivanov@example.com"));
         when(teacherRepository.findByCoursesIdOrderByFullName(3L)).thenReturn(teachers);

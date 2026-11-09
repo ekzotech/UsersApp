@@ -9,6 +9,7 @@ import com.example.usersapp.domain.UserRepository;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +55,14 @@ public class CuratorService {
     @Transactional(readOnly = true)
     public List<Student> studentsOfCurator(String username) {
         Teacher teacher = curatorOf(username).orElseThrow(AccessDeniedForCuratorException::new);
-        return studentRepository.findByCuratorIdOrderByFullName(teacher.getId());
+        List<Student> students = studentRepository.findByCuratorIdOrderByFullName(teacher.getId());
+        // The page renders the curator's name after this transaction ends (open-in-view=false).
+        students.forEach(student -> {
+            if (student.getCurator() != null) {
+                student.getCurator().getFullName();
+            }
+        });
+        return students;
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +77,13 @@ public class CuratorService {
     }
 
     private Optional<Teacher> curatorOf(String username) {
-        return userRepository.findByUsername(username).map(User::getTeacher).filter(Objects::nonNull);
+        // Fail closed: every login account carries ROLE_TEACHER, so the URL-level role check does not
+        // prove the account's teacher is an active curator (amendment (9)).
+        return userRepository.findByUsername(username)
+                .map(User::getTeacher)
+                .map(teacher -> (Teacher) Hibernate.unproxy(teacher))
+                .filter(Objects::nonNull)
+                .filter(Teacher::isCurator)
+                .filter(Teacher::isActive);
     }
 }

@@ -160,6 +160,54 @@ class CuratorServiceTest {
     }
 
     @Test
+    void studentsOfCuratorForNonCuratorTeacherIs403() {
+        Teacher lecturer = teacher(7L, "Иван Предметников", "ivan@example.com");
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(lecturer)));
+
+        assertThatThrownBy(() -> service.studentsOfCurator(CURATOR_USERNAME))
+                .isInstanceOf(AccessDeniedForCuratorException.class);
+
+        verify(studentRepository, never()).findByCuratorIdOrderByFullName(any());
+    }
+
+    @Test
+    void studentsOfCuratorForDismissedCuratorIs403() {
+        Teacher dismissed = curator(7L, "Пётр Кураторов", "curator@example.com");
+        dismissed.setActive(false);
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(dismissed)));
+
+        assertThatThrownBy(() -> service.studentsOfCurator(CURATOR_USERNAME))
+                .isInstanceOf(AccessDeniedForCuratorException.class);
+
+        verify(studentRepository, never()).findByCuratorIdOrderByFullName(any());
+    }
+
+    @Test
+    void assertCuratorOwnsStudentRejectsNonCuratorTeacher() {
+        Teacher lecturer = teacher(7L, "Иван Предметников", "ivan@example.com");
+        Student own = student(1L, "Анна Смирнова", "anna@example.com");
+        own.setCurator(lecturer);
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(lecturer)));
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(own));
+
+        assertThatThrownBy(() -> service.assertCuratorOwnsStudent(CURATOR_USERNAME, 1L))
+                .isInstanceOf(AccessDeniedForCuratorException.class);
+    }
+
+    @Test
+    void assertCuratorOwnsStudentRejectsDismissedCurator() {
+        Teacher dismissed = curator(7L, "Пётр Кураторов", "curator@example.com");
+        dismissed.setActive(false);
+        Student own = student(1L, "Анна Смирнова", "anna@example.com");
+        own.setCurator(dismissed);
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(dismissed)));
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(own));
+
+        assertThatThrownBy(() -> service.assertCuratorOwnsStudent(CURATOR_USERNAME, 1L))
+                .isInstanceOf(AccessDeniedForCuratorException.class);
+    }
+
+    @Test
     void assertCuratorOwnsStudentRejectsForeignStudent() {
         Teacher curator = curator(7L, "Пётр Кураторов", "curator@example.com");
         Student foreign = student(1L, "Глеб Иной", "gleb@example.com");
