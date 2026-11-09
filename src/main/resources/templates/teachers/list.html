@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Преподаватели', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Преподаватели</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1 th:text="'Преподаватели (' + ${#lists.size(teachers)} + ')'">Преподаватели (0)</h1>
+
+    <p><a th:href="@{/teachers/new}">+ Преподаватель</a></p>
+
+    <table class="data" th:if="${!#lists.isEmpty(teachers)}">
+        <thead>
+        <tr>
+            <th scope="col">ФИО</th>
+            <th scope="col">Email</th>
+            <th scope="col">Роль</th>
+            <th scope="col">Статус</th>
+            <th scope="col">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="t : ${teachers}">
+            <td data-label="ФИО" th:text="${t.fullName}">Иван Иванов</td>
+            <td data-label="Email" th:text="${t.email}">ivanov@example.com</td>
+            <td data-label="Роль">
+                <span class="badge" th:if="${t.curator}">Куратор</span>
+                <span th:unless="${t.curator}">—</span>
+            </td>
+            <td data-label="Статус" th:text="${t.displayStatus}">Активен</td>
+            <td data-label="Действия">
+                <a th:href="@{/teachers/{id}(id=${t.id})}">Открыть</a>
+                <form th:if="${t.active}" th:action="@{/teachers/{id}/deactivate(id=${t.id})}" method="post">
+                    <button type="submit" class="link-button">Уволить</button>
+                </form>
+                <form th:unless="${t.active}" th:action="@{/teachers/{id}/activate(id=${t.id})}" method="post">
+                    <button type="submit" class="link-button">Активировать</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(teachers)}">Преподавателей пока нет.</p>
+
+    <p><a th:href="@{/users}">← К списку пользователей</a></p>
+</main>
+</body>
+</html>

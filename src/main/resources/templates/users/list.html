@@ -52,6 +52,7 @@
 
     <section>
         <h2 th:text="'Преподаватели (' + ${#lists.size(teachers)} + ')'">Преподаватели (0)</h2>
+        <p th:if="${canAdminister}"><a th:href="@{/teachers}">Управление преподавателями</a></p>
         <table class="data" th:if="${!#lists.isEmpty(teachers)}">
             <thead>
             <tr>

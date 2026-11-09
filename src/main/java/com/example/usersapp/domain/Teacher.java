@@ -57,6 +57,12 @@ public class Teacher {
     @ToString.Exclude
     private List<Enrollment> enrollments = new ArrayList<>();
 
+    public Teacher(String fullName, String email, boolean curator) {
+        this.fullName = fullName;
+        this.email = email;
+        this.curator = curator;
+    }
+
     public String getDisplayStatus() {
         return active ? "Активен" : "Уволен";
     }

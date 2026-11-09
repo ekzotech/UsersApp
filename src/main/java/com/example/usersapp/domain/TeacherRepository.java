@@ -8,4 +8,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 
     @EntityGraph(attributePaths = "courses")
     Optional<Teacher> findWithCoursesById(Long id);
+
+    boolean existsByEmailIgnoreCase(String email);
 }
