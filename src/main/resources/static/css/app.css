@@ -210,4 +210,28 @@ table.data td {
         text-align: left;
         color: var(--color-muted);
     }
+
+    /* Action cells stack their forms vertically instead of a squeezed flex row, so a long
+       label (student name, curator name) never pushes a button under the neighbouring cell. */
+    table.data td[data-label="Действия"] {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        text-align: left;
+    }
+
+    table.data td[data-label="Действия"]::before {
+        margin-bottom: 0.25rem;
+    }
+
+    table.data td[data-label="Действия"] form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    table.data td[data-label="Действия"] button,
+    table.data td[data-label="Действия"] select {
+        width: 100%;
+    }
 }

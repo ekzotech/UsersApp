@@ -19,35 +19,6 @@ test.beforeEach(async ({ page }) => {
   await page.context().clearCookies();
 });
 
-/**
- * Clicks the "Снять куратора" button of a listed student and waits for the flash message it causes.
- *
- * The curator page renders the select and this button in one form, and the button relies on its own
- * `value=""` to submit an empty `curatorId`. Playwright dispatches a synthetic (untrusted) click, and that
- * attribute is not reliably applied: the browser then also submits the select's value, so the endpoint sees
- * "assign the curator that is already shown" ("Куратор назначен"). When that happens, the click is repeated
- * with the select's `name` detached so the button is the sole `curatorId` source — exactly what the markup
- * intends. A click that already submits an empty `curatorId` is left alone (and asserted on the flash).
- */
-async function clickRemoveCurator(page: Page, row: Locator, select: Locator): Promise<void> {
-  const button = row.getByRole('button', { name: 'Снять куратора' });
-  const [response] = await Promise.all([
-    page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/curator/students/')),
-    button.click(),
-  ]);
-  expect(new URLSearchParams(response.request().postData() ?? '').has('curatorId')).toBeTruthy();
-  await response.finished();
-
-  const flash = page.locator('p.flash.success');
-  if ((await flash.textContent()) === 'Куратор снят') {
-    return;
-  }
-  expect(await flash.textContent()).toBe('Куратор назначен');
-
-  await select.evaluate((element) => element.removeAttribute('name'));
-  await Promise.all([page.waitForURL(hasPathSuffix('/curator/students')), button.click()]);
-}
-
 /** The student id of the first listed student (the select id is `curatorId-<studentId>`). */
 async function firstStudentId(page: Page): Promise<string> {
   const select = page.locator('select[id^="curatorId-"]').first();
@@ -91,13 +62,43 @@ test('curator removes the curator of one of its students', async ({ page }) => {
   const studentId = await firstStudentId(page);
   const select = page.locator(`select#curatorId-${studentId}`);
 
-  // "Снять куратора" posts `curatorId=""`, which removes the curator; the student then leaves this list.
-  await clickRemoveCurator(page, curatorRow(page, studentId), select);
+  // "Снять куратора" is its own form and carries no curatorId, so the removal cannot be mistaken for an
+  // assignment of the curator selected in the assign form.
+  await curatorRow(page, studentId).getByRole('button', { name: 'Снять куратора' }).click();
 
   await expect(page).toHaveURL(hasPathSuffix('/curator/students'));
   await expect(page.locator('p.flash.success')).toHaveText('Куратор снят');
   await expect(curatorRow(page, studentId)).toHaveCount(0);
   await expect(page.getByRole('heading', { name: `Мои студенты (${countBefore - 1})`, level: 1 })).toBeVisible();
+});
+
+test('curator claims a student without a curator', async ({ page }) => {
+  // The admin creates a student without a curator; the student is listed under "Студенты без куратора".
+  await login(page);
+  const student = studentData('Без куратора');
+  await createStudent(page, student);
+
+  await page.context().clearCookies();
+  await login(page, CURATOR_USERNAME, CURATOR_PASSWORD);
+  await page.goto('/curator/students');
+
+  const heading = page.getByRole('heading', { name: /^Мои студенты \(\d+\)$/, level: 1 });
+  const countBefore = Number((await heading.innerText()).match(/\d+/)![0]);
+  const firstSelect = page.locator('select[id^="curatorId-"]').first();
+  await expect(firstSelect).toBeVisible();
+  const curatorName = (await firstSelect.locator('option:checked').innerText()).trim();
+
+  const unassignedRow = page.locator('table.data tbody tr', { hasText: student.fullName });
+  await expect(unassignedRow).toHaveCount(1);
+  await expect(unassignedRow.getByRole('button', { name: 'Взять кураторство' })).toBeVisible();
+  await unassignedRow.getByRole('button', { name: 'Взять кураторство' }).click();
+
+  await expect(page).toHaveURL(hasPathSuffix('/curator/students'));
+  await expect(page.locator('p.flash.success')).toHaveText('Куратор назначен');
+  await expect(page.getByRole('heading', { name: `Мои студенты (${countBefore + 1})`, level: 1 })).toBeVisible();
+  const claimedRow = page.locator('table.data tbody tr', { has: page.locator('select[id^="curatorId-"]'), hasText: student.fullName });
+  await expect(claimedRow).toHaveCount(1);
+  await expect(claimedRow.locator('td[data-label="Куратор"]')).toHaveText(curatorName);
 });
 
 test('admin assigns a newly created student to a subject on the teacher profile', async ({ page }) => {
