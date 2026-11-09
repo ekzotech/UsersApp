@@ -129,13 +129,9 @@ class SecurityConfigWebTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    void usersUrlIsAllowedForTeacher() throws Exception {
-        // §16: /users is open to every authenticated user (UserController from Task 2.2 renders it).
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("users/list"))
-                .andExpect(content().string(containsString("Студенты (0)")))
-                .andExpect(content().string(containsString("href=\"/students/new\"")));
+    void usersUrlIsForbiddenForTeacher() throws Exception {
+        // Task 2.3 (authoritative): the users catalog is admin-only, like /students/** and /teachers/**.
+        mockMvc.perform(get("/users")).andExpect(status().isForbidden());
     }
 
     @Test

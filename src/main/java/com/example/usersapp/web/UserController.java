@@ -1,24 +1,30 @@
 package com.example.usersapp.web;
 
 import com.example.usersapp.service.StudentService;
+import com.example.usersapp.service.TeacherService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/users")
 public class UserController {
 
     private final StudentService studentService;
+    private final TeacherService teacherService;
 
-    public UserController(StudentService studentService) {
+    public UserController(StudentService studentService, TeacherService teacherService) {
         this.studentService = studentService;
+        this.teacherService = teacherService;
     }
 
     @GetMapping
-    public String list(Model model) {
-        model.addAttribute("students", studentService.findAll(null));
+    public String list(@RequestParam(required = false) String q, Model model) {
+        model.addAttribute("students", studentService.findAll(q));
+        model.addAttribute("teachers", teacherService.findAll());
+        model.addAttribute("q", q);
         return "users/list";
     }
 }
