@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Новый студент', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Новый студент</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1>Новый студент</h1>
+    <form th:action="@{/students/new}" th:object="${form}" method="post">
+        <label for="fullName">ФИО</label>
+        <input id="fullName" type="text" th:field="*{fullName}" autocomplete="name">
+        <span class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}">Ошибка</span>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" th:field="*{email}" autocomplete="email">
+        <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Ошибка</span>
+
+        <label for="groupName">Группа</label>
+        <input id="groupName" type="text" th:field="*{groupName}">
+        <span class="field-error" th:if="${#fields.hasErrors('groupName')}" th:errors="*{groupName}">Ошибка</span>
+
+        <button type="submit">Создать</button>
+    </form>
+    <p><a th:href="@{/users}">← К списку пользователей</a></p>
+</main>
+</body>
+</html>

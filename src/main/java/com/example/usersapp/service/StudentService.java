@@ -2,6 +2,7 @@ package com.example.usersapp.service;
 
 import com.example.usersapp.domain.Student;
 import com.example.usersapp.domain.StudentRepository;
+import com.example.usersapp.web.StudentForm;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -24,5 +25,16 @@ public class StudentService {
         }
         String q = query.strip();
         return studentRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(q, q, byName);
+    }
+
+    @Transactional
+    public Student create(StudentForm form) {
+        String fullName = form.getFullName().strip();
+        String email = form.getEmail().strip();
+        String groupName = form.getGroupName().strip();
+        if (studentRepository.existsByEmailIgnoreCase(email)) {
+            throw new DuplicateEmailException(email);
+        }
+        return studentRepository.save(new Student(fullName, email, groupName));
     }
 }

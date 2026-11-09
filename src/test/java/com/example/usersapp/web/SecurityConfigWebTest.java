@@ -130,8 +130,12 @@ class SecurityConfigWebTest {
     @Test
     @WithMockUser(roles = "TEACHER")
     void usersUrlIsAllowedForTeacher() throws Exception {
-        // §16: /users is open to every authenticated user; no controller yet, so MVC answers 404.
-        mockMvc.perform(get("/users")).andExpect(status().isNotFound());
+        // §16: /users is open to every authenticated user (UserController from Task 2.2 renders it).
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("users/list"))
+                .andExpect(content().string(containsString("Студенты (0)")))
+                .andExpect(content().string(containsString("href=\"/students/new\"")));
     }
 
     @Test

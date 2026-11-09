@@ -1,6 +1,7 @@
 package com.example.usersapp.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -9,9 +10,11 @@ import static org.mockito.Mockito.when;
 
 import com.example.usersapp.domain.Student;
 import com.example.usersapp.domain.StudentRepository;
+import com.example.usersapp.web.StudentForm;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
@@ -20,6 +23,8 @@ import org.springframework.data.domain.Sort;
 class StudentServiceTest {
 
     private static final Sort BY_NAME = Sort.by("fullName");
+    private static final String STUDENT_NAME = "Анна Смирнова";
+    private static final String GROUP_NAME = "ИС-11";
 
     @Mock
     private StudentRepository studentRepository;
@@ -61,5 +66,43 @@ class StudentServiceTest {
         verify(studentRepository)
                 .findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase("анн", "анн", BY_NAME);
         verify(studentRepository, never()).findAll(any(Sort.class));
+    }
+
+    @Test
+    void createSavesActiveStudentWithTrimmedFields() {
+        when(studentRepository.existsByEmailIgnoreCase("student@example.com")).thenReturn(false);
+        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Student created = new StudentService(studentRepository)
+                .create(form("  " + STUDENT_NAME + " ", " student@example.com ", " " + GROUP_NAME + "  "));
+
+        ArgumentCaptor<Student> captor = ArgumentCaptor.forClass(Student.class);
+        verify(studentRepository).save(captor.capture());
+        Student saved = captor.getValue();
+        assertThat(saved.getFullName()).isEqualTo(STUDENT_NAME);
+        assertThat(saved.getEmail()).isEqualTo("student@example.com");
+        assertThat(saved.getGroupName()).isEqualTo(GROUP_NAME);
+        assertThat(saved.isActive()).isTrue();
+        assertThat(created).isSameAs(saved);
+    }
+
+    @Test
+    void createWithDuplicateEmailThrows() {
+        when(studentRepository.existsByEmailIgnoreCase("S@X.COM")).thenReturn(true);
+
+        assertThatThrownBy(() -> new StudentService(studentRepository)
+                .create(form(STUDENT_NAME, "S@X.COM", GROUP_NAME)))
+                .isInstanceOf(DuplicateEmailException.class)
+                .hasMessageContaining("S@X.COM");
+
+        verify(studentRepository, never()).save(any(Student.class));
+    }
+
+    private static StudentForm form(String fullName, String email, String groupName) {
+        StudentForm form = new StudentForm();
+        form.setFullName(fullName);
+        form.setEmail(email);
+        form.setGroupName(groupName);
+        return form;
     }
 }

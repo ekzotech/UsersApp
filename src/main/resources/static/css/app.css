@@ -122,6 +122,12 @@ a:focus-visible {
     outline-offset: 2px;
 }
 
+.field-error {
+    margin-top: -0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-error);
+}
+
 /* Tables: stacked cards on narrow screens */
 
 table.data {
