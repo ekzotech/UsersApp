@@ -1,6 +1,7 @@
 package com.example.usersapp.web;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.usersapp.domain.Student;
 import com.example.usersapp.service.DuplicateEmailException;
+import com.example.usersapp.service.StudentNotFoundException;
 import com.example.usersapp.service.StudentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,5 +124,68 @@ class StudentControllerTest {
     @WithMockUser(roles = "TEACHER")
     void teacherIsForbiddenToCreateStudents() throws Exception {
         mockMvc.perform(get("/students/new")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void postDeactivateRedirectsWithFlash() throws Exception {
+        mockMvc.perform(post("/students/1/deactivate").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/users"))
+                .andExpect(flash().attribute("success", "Студент отчислен"));
+
+        verify(studentService).deactivate(1L);
+    }
+
+    @Test
+    void postActivateRedirectsWithFlash() throws Exception {
+        mockMvc.perform(post("/students/2/activate").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/users"))
+                .andExpect(flash().attribute("success", "Студент активирован"));
+
+        verify(studentService).activate(2L);
+    }
+
+    @Test
+    void deactivateUnknownIdIs404() throws Exception {
+        when(studentService.deactivate(99L)).thenThrow(new StudentNotFoundException(99L));
+
+        mockMvc.perform(post("/students/99/deactivate").with(csrf()))
+                .andExpect(status().isNotFound());
+
+        verify(studentService).deactivate(99L);
+    }
+
+    @Test
+    void activateUnknownIdIs404() throws Exception {
+        when(studentService.activate(99L)).thenThrow(new StudentNotFoundException(99L));
+
+        mockMvc.perform(post("/students/99/activate").with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void nonNumericIdIsRejectedWithoutTouchingService() throws Exception {
+        // "abc" never reaches the service: MVC's type conversion answers 400 before the lookup.
+        mockMvc.perform(post("/students/abc/deactivate").with(csrf()))
+                .andExpect(status().is4xxClientError());
+
+        verifyNoInteractions(studentService);
+    }
+
+    @Test
+    void postDeactivateWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/students/1/deactivate"))
+                .andExpect(status().isForbidden());
+
+        verify(studentService, never()).deactivate(anyLong());
+    }
+
+    @Test
+    void postActivateWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/students/1/activate"))
+                .andExpect(status().isForbidden());
+
+        verify(studentService, never()).activate(anyLong());
     }
 }

@@ -12,6 +12,7 @@ import com.example.usersapp.domain.Student;
 import com.example.usersapp.domain.StudentRepository;
 import com.example.usersapp.web.StudentForm;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -95,6 +96,48 @@ class StudentServiceTest {
                 .isInstanceOf(DuplicateEmailException.class)
                 .hasMessageContaining("S@X.COM");
 
+        verify(studentRepository, never()).save(any(Student.class));
+    }
+
+    @Test
+    void deactivateSetsInactive() {
+        Student student = new Student(STUDENT_NAME, "student@example.com", GROUP_NAME);
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(student));
+        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Student deactivated = new StudentService(studentRepository).deactivate(1L);
+
+        ArgumentCaptor<Student> captor = ArgumentCaptor.forClass(Student.class);
+        verify(studentRepository).save(captor.capture());
+        assertThat(captor.getValue().isActive()).isFalse();
+        assertThat(deactivated).isSameAs(student);
+    }
+
+    @Test
+    void activateSetsActive() {
+        Student student = new Student(STUDENT_NAME, "student@example.com", GROUP_NAME);
+        student.setActive(false);
+        when(studentRepository.findById(2L)).thenReturn(Optional.of(student));
+        when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Student activated = new StudentService(studentRepository).activate(2L);
+
+        ArgumentCaptor<Student> captor = ArgumentCaptor.forClass(Student.class);
+        verify(studentRepository).save(captor.capture());
+        assertThat(captor.getValue().isActive()).isTrue();
+        assertThat(activated).isSameAs(student);
+    }
+
+    @Test
+    void unknownIdThrows() {
+        when(studentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> new StudentService(studentRepository).deactivate(99L))
+                .isInstanceOf(StudentNotFoundException.class)
+                .hasMessage("Студент не найден: 99");
+        assertThatThrownBy(() -> new StudentService(studentRepository).activate(99L))
+                .isInstanceOf(StudentNotFoundException.class)
+                .hasMessage("Студент не найден: 99");
         verify(studentRepository, never()).save(any(Student.class));
     }
 

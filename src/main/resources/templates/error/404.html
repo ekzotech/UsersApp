@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Страница не найдена', ~{::content})}">
+<head>
+    <meta charset="UTF-8">
+    <title>Страница не найдена</title>
+</head>
+<body>
+<main th:fragment="content">
+    <h1>Страница не найдена</h1>
+    <p>Запись не найдена.</p>
+    <p><a th:href="@{/users}">Вернуться к списку пользователей</a></p>
+</main>
+</body>
+</html>

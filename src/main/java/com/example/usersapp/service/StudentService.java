@@ -43,4 +43,20 @@ public class StudentService {
         }
         return studentRepository.save(new Student(fullName, email, groupName));
     }
+
+    @Transactional
+    public Student activate(Long id) {
+        return setActive(id, true);
+    }
+
+    @Transactional
+    public Student deactivate(Long id) {
+        return setActive(id, false);
+    }
+
+    private Student setActive(Long id, boolean active) {
+        Student student = studentRepository.findById(id).orElseThrow(() -> new StudentNotFoundException(id));
+        student.setActive(active);
+        return studentRepository.save(student);
+    }
 }

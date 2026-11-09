@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -42,6 +43,20 @@ public class StudentController {
             return "students/form";
         }
         redirectAttributes.addFlashAttribute("success", "Студент создан");
+        return "redirect:/users";
+    }
+
+    @PostMapping("/{id}/activate")
+    public String activate(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        studentService.activate(id);
+        redirectAttributes.addFlashAttribute("success", "Студент активирован");
+        return "redirect:/users";
+    }
+
+    @PostMapping("/{id}/deactivate")
+    public String deactivate(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        studentService.deactivate(id);
+        redirectAttributes.addFlashAttribute("success", "Студент отчислен");
         return "redirect:/users";
     }
 }
