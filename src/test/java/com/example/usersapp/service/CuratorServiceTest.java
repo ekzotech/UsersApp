@@ -263,4 +263,83 @@ class CuratorServiceTest {
         user.setTeacher(teacher);
         return user;
     }
+
+    @Test
+    void claimSetsTheCurrentCurator() {
+        Teacher curator = curator(7L, "Пётр Кураторов", "curator@example.com");
+        Student unassigned = student(9L, "Вера Орлова", "vera@example.com");
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(curator)));
+        when(studentRepository.findById(9L)).thenReturn(Optional.of(unassigned));
+        when(studentRepository.save(unassigned)).thenReturn(unassigned);
+
+        service.claimCurator(CURATOR_USERNAME, 9L);
+
+        assertThat(unassigned.getCurator()).isSameAs(curator);
+        verify(studentRepository).save(unassigned);
+    }
+
+    @Test
+    void claimRejectsAStudentWhoAlreadyHasACurator() {
+        Teacher curator = curator(7L, "Пётр Кураторов", "curator@example.com");
+        Teacher other = curator(8L, "Марина Курилова", "other@example.com");
+        Student taken = student(9L, "Вера Орлова", "vera@example.com");
+        taken.setCurator(other);
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(curator)));
+        when(studentRepository.findById(9L)).thenReturn(Optional.of(taken));
+
+        assertThatThrownBy(() -> service.claimCurator(CURATOR_USERNAME, 9L))
+                .isInstanceOf(CuratorRuleException.class)
+                .hasMessage("У студента уже есть куратор");
+
+        verify(studentRepository, never()).save(taken);
+    }
+
+    @Test
+    void claimRejectsADismissedStudent() {
+        Teacher curator = curator(7L, "Пётр Кураторов", "curator@example.com");
+        Student dismissed = student(9L, "Вера Орлова", "vera@example.com");
+        dismissed.setActive(false);
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.of(account(curator)));
+        when(studentRepository.findById(9L)).thenReturn(Optional.of(dismissed));
+
+        assertThatThrownBy(() -> service.claimCurator(CURATOR_USERNAME, 9L))
+                .isInstanceOf(CuratorRuleException.class)
+                .hasMessage("Нельзя назначить куратора отчисленному студенту");
+    }
+
+    @Test
+    void claimForNonAccountIs403() {
+        when(userRepository.findByUsername(CURATOR_USERNAME)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.claimCurator(CURATOR_USERNAME, 9L))
+                .isInstanceOf(AccessDeniedForCuratorException.class);
+
+        verify(studentRepository, never()).findById(any());
+    }
+
+    @Test
+    void unassignedStudentsListsTheFirstCandidatesOnly() {
+        int total = CuratorService.UNASSIGNED_PAGE_SIZE * 2;
+        List<Student> all = java.util.stream.IntStream.rangeClosed(1, total)
+                .mapToObj(i -> student((long) i, "Студент " + i, "s" + i + "@example.com"))
+                .toList();
+        when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName()).thenReturn(all);
+
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+
+        assertThat(candidates.students()).hasSize(CuratorService.UNASSIGNED_PAGE_SIZE);
+        assertThat(candidates.students().get(0).getFullName()).isEqualTo("Студент 1");
+        assertThat(candidates.total()).isEqualTo(total);
+    }
+
+    @Test
+    void unassignedCandidatesAreAllWhenFewerThanThePageSize() {
+        when(studentRepository.findByCuratorIsNullAndActiveTrueOrderByFullName())
+                .thenReturn(List.of(student(1L, "Вера Орлова", "vera@example.com")));
+
+        CuratorService.UnassignedCandidates candidates = service.unassignedCandidates();
+
+        assertThat(candidates.students()).extracting(Student::getFullName).containsExactly("Вера Орлова");
+        assertThat(candidates.total()).isEqualTo(1);
+    }
 }

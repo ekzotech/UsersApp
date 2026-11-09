@@ -18,8 +18,12 @@ Commands:
   compose-down          docker compose down (keeps the database volume).
   compose-reset         docker compose down -v (drops the database volume; next up re-seeds).
   seed-check            Print row counts from the compose database.
-  e2e                   Run Playwright E2E suite against the compose stack (from e2e/).
-  e2e-install           npm ci + npx playwright install chromium (one-time setup in e2e/).
+  e2e                   Run Playwright E2E suite against a running stack, inside the compose network
+                        (docker compose --profile e2e run --rm e2e).
+  e2e-local             Run Playwright from the host against http://localhost:8081 (needs stack up
+                        and `npm ci` + `npx playwright install` in e2e/).
+  e2e-stack             Bring the stack up (build + wait for health) and then run the E2E suite.
+  e2e-install           npm ci + npx playwright install chromium (one-time setup for e2e-local).
 EOF
 }
 
@@ -34,7 +38,9 @@ case "${1:-}" in
   seed-check)
     docker compose exec -T db psql -U usersapp -d usersapp -c \
       "select 'students' t, count(*) from students union all select 'teachers', count(*) from teachers union all select 'enrollments', count(*) from enrollments union all select 'users', count(*) from users union all select 'courses', count(*) from courses;" ;;
-  e2e)          (cd e2e && npm test) ;;
+  e2e)          docker compose --profile e2e run --rm -T e2e ;;
+  e2e-local)    (cd e2e && npm test) ;;
+  e2e-stack)    docker compose up -d --build --wait && docker compose --profile e2e run --rm -T e2e ;;
   e2e-install)  (cd e2e && npm ci && npx playwright install chromium) ;;
   *)            usage; exit 2 ;;
 esac

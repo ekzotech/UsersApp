@@ -34,7 +34,30 @@ services:
       APP_ADMIN_PASSWORD: "${APP_ADMIN_PASSWORD:-admin12345}"
     ports:
       - "8081:8080"
+    healthcheck:
+      # The login page renders once Tomcat and the context are ready.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/login"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
+
+  # On-demand browser for end-to-end tests. It joins this stack's network so the suite talks to
+  # the app over its service name regardless of how the host publishes ports:
+  #   docker compose --profile e2e run --rm e2e
+  e2e:
+    profiles: ["e2e"]
+    image: mcr.microsoft.com/playwright:v1.56.1-noble
+    depends_on:
+      app:
+        condition: service_started
+    environment:
+      E2E_BASE_URL: http://app:8080
+      CI: "true"
+    working_dir: /work
+    volumes:
+      - ./e2e:/work
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
 
 volumes:
   db-data:

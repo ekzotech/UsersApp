@@ -37,15 +37,39 @@
                                 th:text="${c.fullName}">Пётр Кураторов</option>
                     </select>
                     <button type="submit" th:text="'Сохранить'">Сохранить</button>
-                    <!-- Posts without a curator: the empty field value overrides the selected option. -->
-                    <button type="submit"
-                            class="link-button"
-                            name="curatorId"
-                            value=""
-                            th:formaction="@{/curator/students/{id}/curator(id=${s.id})}"
-                            th:text="'Снять куратора'">Снять куратора</button>
+
+                </form>
+                <form th:if="${s.active and s.curator != null}"
+                      th:action="@{/curator/students/{id}/remove(id=${s.id})}"
+                      method="post">
+                    <button type="submit" class="link-button">Снять куратора</button>
                 </form>
                 <p th:unless="${s.active}">Студент отчислен: куратора изменить нельзя.</p>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Студенты без куратора</h2>
+    <p th:if="${#lists.isEmpty(unassigned)}">Все студенты распределены.</p>
+    <p th:if="${!#lists.isEmpty(unassigned)}"
+       th:text="${'Показаны первые ' + #lists.size(unassigned) + ' из ' + unassignedTotal + '.'}">Показаны первые 50 из 210.</p>
+    <table class="data" th:if="${!#lists.isEmpty(unassigned)}">
+        <thead>
+        <tr>
+            <th scope="col">ФИО</th>
+            <th scope="col">Группа</th>
+            <th scope="col">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="u : ${unassigned}">
+            <td data-label="ФИО" th:text="${u.fullName}">Вера Орлова</td>
+            <td data-label="Группа" th:text="${u.groupName}">ИС-11</td>
+            <td data-label="Действия">
+                <form th:action="@{/curator/students/{id}/claim(id=${u.id})}" method="post">
+                    <button type="submit">Взять кураторство</button>
+                </form>
             </td>
         </tr>
         </tbody>
