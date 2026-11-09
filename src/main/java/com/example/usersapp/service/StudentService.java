@@ -20,11 +20,17 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<Student> findAll(String query) {
         Sort byName = Sort.by("fullName");
-        if (query == null || query.isBlank()) {
-            return studentRepository.findAll(byName);
-        }
-        String q = query.strip();
-        return studentRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(q, q, byName);
+        List<Student> students = query == null || query.isBlank()
+                ? studentRepository.findAll(byName)
+                : studentRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                        query.strip(), query.strip(), byName);
+        // The list page renders the curator's name after this transaction ends (open-in-view=false).
+        students.forEach(student -> {
+            if (student.getCurator() != null) {
+                student.getCurator().getFullName();
+            }
+        });
+        return students;
     }
 
     @Transactional
